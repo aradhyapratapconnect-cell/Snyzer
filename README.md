@@ -37,6 +37,8 @@ Copy `.env.example` to `.env` and fill in values (never commit real secrets):
 - `npm run clean` removes per-workspace `dist/` folders.
 - Backend server: `npm run build -w @snyzer/backend` then
   `npm run start -w @snyzer/backend` (serves `GET /api/v1/health`).
+- Database migrations: `npm run db:migrate -w @snyzer/backend` (applies
+  pending `backend/migrations/*.sql` using `DATABASE_URL`).
 - Frontend dev server: `npm run dev -w @snyzer/frontend`; production bundle:
   `npm run build -w @snyzer/frontend` (emits `frontend/dist/`).
 
