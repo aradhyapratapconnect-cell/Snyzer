@@ -1,0 +1,17 @@
+{
+  "name": "@snyzer/frontend",
+  "version": "0.1.0",
+  "description": "Snyzer frontend app (SNZ-001 skeleton; React + Vite arrives in SNZ-003).",
+  "private": true,
+  "type": "module",
+  "main": "./dist/main.js",
+  "types": "./dist/main.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint src --max-warnings=0"
+  },
+  "dependencies": {
+    "@snyzer/shared": "*"
+  }
+}

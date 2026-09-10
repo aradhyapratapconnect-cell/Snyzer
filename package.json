@@ -1,0 +1,33 @@
+{
+  "name": "snyzer",
+  "version": "0.1.0",
+  "description": "Snyzer — AI-assisted writing improvement application (monorepo root).",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@11.12.1",
+  "workspaces": [
+    "shared",
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "build": "npm run build -w @snyzer/shared && npm run build -w @snyzer/backend && npm run build -w @snyzer/frontend",
+    "typecheck": "npm run build -w @snyzer/shared && npm run typecheck -w @snyzer/shared && npm run typecheck -w @snyzer/backend && npm run typecheck -w @snyzer/frontend",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --check .",
+    "format:write": "prettier --write .",
+    "test": "node scripts/verify-workspaces.mjs",
+    "clean": "node scripts/clean.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

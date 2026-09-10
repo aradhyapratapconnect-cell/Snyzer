@@ -1,0 +1,35 @@
+dist
+build
+coverage
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.*
+
+# Environment files (never commit real secrets)
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Vite / build caches
+.vite/
+*.tsbuildinfo
+
+# Supabase / local tooling
+.supabase/
