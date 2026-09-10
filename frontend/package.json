@@ -1,17 +1,36 @@
 {
   "name": "@snyzer/frontend",
   "version": "0.1.0",
-  "description": "Snyzer frontend app (SNZ-001 skeleton; React + Vite arrives in SNZ-003).",
+  "description": "Snyzer frontend app (React + Vite + Tailwind; see src/main.tsx).",
   "private": true,
   "type": "module",
   "main": "./dist/main.js",
   "types": "./dist/main.d.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
-    "lint": "eslint src --max-warnings=0"
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.tests.json",
+    "lint": "eslint src tests --max-warnings=0",
+    "test": "vitest run",
+    "dev": "vite",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@snyzer/shared": "*"
+    "@snyzer/shared": "*",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router-dom": "^7.18.3"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "autoprefixer": "^10.5.5",
+    "jsdom": "^26.1.0",
+    "postcss": "^8.5.28",
+    "tailwindcss": "^3.4.19",
+    "vite": "^6.4.3",
+    "vitest": "^3.2.7"
   }
 }

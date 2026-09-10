@@ -1,17 +1,18 @@
 /**
- * SNZ-001 workspace integration check.
+ * Workspace integration check (SNZ-001 foundation, extended per ticket).
  *
  * Verifies:
  * - npm workspaces are declared at the root
  * - each workspace has package.json + tsconfig.json with strict mode
  * - root + workspace build/typecheck/lint scripts exist
  * - shared imports resolve in backend + frontend sources
+ * - frontend entry, Tailwind config, and index.html exist (SNZ-003)
  * - build outputs exist (run `npm run build` first)
  * - .gitignore covers node_modules, dist/build outputs, and .env files
  *
  * Run: `npm test` (node scripts/verify-workspaces.mjs)
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -70,10 +71,40 @@ for (const workspace of ['backend', 'frontend']) {
 }
 
 // 4. Shared imports in frontend + backend sources
+function dirContains(root, needle) {
+  for (const entry of readdirSync(root)) {
+    const full = join(root, entry);
+    const stat = statSync(full);
+    if (stat.isDirectory() && entry !== 'node_modules' && entry !== 'dist') {
+      if (dirContains(full, needle)) {
+        return true;
+      }
+    } else if (stat.isFile() && /\.(ts|tsx|js|mjs)$/.test(entry)) {
+      if (readFileSync(full, 'utf8').includes(needle)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 const backendSrc = readFileSync(join(rootDir, 'backend', 'src', 'index.ts'), 'utf8');
-const frontendSrc = readFileSync(join(rootDir, 'frontend', 'src', 'main.ts'), 'utf8');
 check('backend imports @snyzer/shared', backendSrc.includes('@snyzer/shared'));
-check('frontend imports @snyzer/shared', frontendSrc.includes('@snyzer/shared'));
+check(
+  'frontend imports @snyzer/shared',
+  dirContains(join(rootDir, 'frontend', 'src'), '@snyzer/shared'),
+);
+
+// 4b. Frontend entry + styling setup (SNZ-003)
+check(
+  'frontend entry src/main.tsx exists',
+  existsSync(join(rootDir, 'frontend', 'src', 'main.tsx')),
+);
+check(
+  'frontend tailwind config exists',
+  existsSync(join(rootDir, 'frontend', 'tailwind.config.ts')),
+);
+check('frontend index.html exists', existsSync(join(rootDir, 'frontend', 'index.html')));
 
 // 5. Build outputs (requires `npm run build` first)
 check(
@@ -92,8 +123,8 @@ check(
   'run npm run build',
 );
 check(
-  'frontend dist/main.js exists',
-  existsSync(join(rootDir, 'frontend', 'dist', 'main.js')),
+  'frontend dist/index.html exists (vite build)',
+  existsSync(join(rootDir, 'frontend', 'dist', 'index.html')),
   'run npm run build',
 );
 

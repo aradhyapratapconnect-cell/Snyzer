@@ -6,7 +6,7 @@ AI-assisted writing improvement application. Monorepo foundation (SNZ-001).
 
 - `shared/` — `@snyzer/shared`: shared TypeScript types and validation helpers.
 - `backend/` — `@snyzer/backend`: Node.js + Express API (`src/app.ts`, `src/server.ts`).
-- `frontend/` — `@snyzer/frontend`: React + Vite app (React/Vite arrives in SNZ-003).
+- `frontend/` — `@snyzer/frontend`: React + Vite + Tailwind app (`src/main.tsx`).
 - `docs/` — workspace placeholder; canonical docs live in `Snyzer_Documentation/`.
 
 ## Commands (run from repo root)
@@ -26,6 +26,8 @@ npm test
 - `npm run clean` removes per-workspace `dist/` folders.
 - Backend server: `npm run build -w @snyzer/backend` then
   `npm run start -w @snyzer/backend` (serves `GET /api/v1/health`).
+- Frontend dev server: `npm run dev -w @snyzer/frontend`; production bundle:
+  `npm run build -w @snyzer/frontend` (emits `frontend/dist/`).
 
 ## Conventions
 
