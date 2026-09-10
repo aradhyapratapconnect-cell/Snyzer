@@ -3,12 +3,16 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './app/router.js';
 import { RootErrorBoundary } from './components/RootErrorBoundary.js';
+import { getFrontendEnv } from './lib/env.js';
 import './styles/index.css';
 
 /**
- * Frontend entrypoint (SNZ-003). Mounts the router inside the root error
- * boundary. Replaces the SNZ-001 `main.ts` skeleton.
+ * Frontend entrypoint (SNZ-003; env validation SNZ-004). Validates public
+ * env before mounting so misconfiguration fails fast instead of producing
+ * cryptic runtime errors.
  */
+getFrontendEnv();
+
 const container = document.getElementById('root');
 if (container === null) {
   throw new Error('Root container #root not found');

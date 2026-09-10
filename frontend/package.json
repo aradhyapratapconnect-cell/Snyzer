@@ -7,6 +7,7 @@
   "main": "./dist/main.js",
   "types": "./dist/main.d.ts",
   "scripts": {
+    "prebuild": "node ../scripts/check-frontend-env.mjs",
     "build": "tsc --noEmit -p tsconfig.json && vite build",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.tests.json",
     "lint": "eslint src tests --max-warnings=0",
@@ -18,7 +19,8 @@
     "@snyzer/shared": "*",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "react-router-dom": "^7.18.3"
+    "react-router-dom": "^7.18.3",
+    "zod": "^4.6.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",

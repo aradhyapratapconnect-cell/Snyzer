@@ -19,6 +19,17 @@ npm run build
 npm test
 ```
 
+## Environment
+
+Copy `.env.example` to `.env` and fill in values (never commit real secrets):
+
+- Backend (`backend/src/config/env.ts`, SNZ-004) requires `DATABASE_URL`,
+  `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, and `OPENROUTER_API_KEY`; the server
+  crashes on startup when any is missing or invalid.
+- Frontend requires `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`;
+  `npm run build -w @snyzer/frontend` halts when they are absent. Backend
+  secrets must never use a `VITE_` prefix.
+
 - `npm run build` builds `shared` first, then `backend` and `frontend`.
 - `npm test` runs the workspace integration check
   (`scripts/verify-workspaces.mjs`) plus every workspace test suite
