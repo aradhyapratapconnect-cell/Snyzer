@@ -5,7 +5,7 @@ AI-assisted writing improvement application. Monorepo foundation (SNZ-001).
 ## Workspaces
 
 - `shared/` — `@snyzer/shared`: shared TypeScript types and validation helpers.
-- `backend/` — `@snyzer/backend`: Node.js + Express API (Express arrives in SNZ-002).
+- `backend/` — `@snyzer/backend`: Node.js + Express API (`src/app.ts`, `src/server.ts`).
 - `frontend/` — `@snyzer/frontend`: React + Vite app (React/Vite arrives in SNZ-003).
 - `docs/` — workspace placeholder; canonical docs live in `Snyzer_Documentation/`.
 
@@ -20,9 +20,12 @@ npm test
 ```
 
 - `npm run build` builds `shared` first, then `backend` and `frontend`.
-- `npm test` runs the SNZ-001 workspace integration check
-  (`scripts/verify-workspaces.mjs`).
+- `npm test` runs the workspace integration check
+  (`scripts/verify-workspaces.mjs`) plus every workspace test suite
+  (e.g. backend supertest/vitest suite via `npm run test -w @snyzer/backend`).
 - `npm run clean` removes per-workspace `dist/` folders.
+- Backend server: `npm run build -w @snyzer/backend` then
+  `npm run start -w @snyzer/backend` (serves `GET /api/v1/health`).
 
 ## Conventions
 

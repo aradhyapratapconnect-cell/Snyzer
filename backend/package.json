@@ -1,17 +1,28 @@
 {
   "name": "@snyzer/backend",
   "version": "0.1.0",
-  "description": "Snyzer backend API (SNZ-001 skeleton; Express arrives in SNZ-002).",
+  "description": "Snyzer backend API (Express service; see src/app.ts and src/server.ts).",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
-    "lint": "eslint src --max-warnings=0"
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.tests.json",
+    "lint": "eslint src tests --max-warnings=0",
+    "test": "vitest run",
+    "start": "node dist/server.js"
   },
   "dependencies": {
-    "@snyzer/shared": "*"
+    "@snyzer/shared": "*",
+    "express": "^4.22.2",
+    "helmet": "^8.3.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.25",
+    "@types/node": "^24.13.4",
+    "@types/supertest": "^6.0.3",
+    "supertest": "^7.2.2",
+    "vitest": "^3.2.7"
   }
 }
