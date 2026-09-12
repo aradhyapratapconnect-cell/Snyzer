@@ -1,17 +1,18 @@
 import { BadGatewayError, ServiceUnavailableError } from '../../middleware/errorHandler.js';
 import { getBackendEnv } from '../../config/env.js';
 import type { AIProvider } from './AIProvider.js';
+import { buildPromptMessages } from './prompts.js';
 import type { AIWritingRequest, AIWritingResponse, TokenUsage } from './types.js';
 
 /**
- * OpenRouter implementation of `AIProvider` (SNZ-022).
+ * OpenRouter implementation of `AIProvider` (SNZ-022; prompts SNZ-023).
  *
  * Server-side HTTPS only — the API key travels from validated env (or
  * explicit options, never the browser) into the `Authorization` header.
  * Model selection is a constructor option so deployments are never pinned to
  * one model; the default is a documented starting point, not a guarantee.
- * Prompt templates graduate to `prompts.ts` in SNZ-023; resilience
- * (timeouts/retries) and strict output validation arrive in SNZ-024/025.
+ * Prompts come from `prompts.ts`; resilience (timeouts/retries) and strict
+ * output validation arrive in SNZ-024/025.
  */
 export const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
@@ -57,21 +58,12 @@ export class OpenRouterProvider implements AIProvider {
     this.appName = options.appName;
   }
 
-  /** First-pass prompt (SNZ-023 replaces this with engineered templates). */
+  /** Prompt payload built from the engineered templates in `prompts.ts`. */
   protected buildMessages(request: AIWritingRequest): OpenRouterMessage[] {
+    const { system, user } = buildPromptMessages(request);
     return [
-      {
-        role: 'system',
-        content:
-          'You improve writing quality while preserving meaning. ' +
-          'Respond with JSON only: {"revisedText": string, "analysis": {' +
-          '"readability": number, "clarity": number, "repetition": number, ' +
-          '"sentenceVariety": number, "vocabularyComplexity": number, "formality": number}}.',
-      },
-      {
-        role: 'user',
-        content: `Mode: ${request.mode}. Tone: ${request.tone}.\n\nText:\n${request.inputText}`,
-      },
+      { role: 'system', content: system },
+      { role: 'user', content: user },
     ];
   }
 
