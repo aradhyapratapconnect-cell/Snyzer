@@ -10,17 +10,22 @@ import {
 import { createWritingJob } from '../controllers/writingController.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { requireAuth } from '../middleware/auth.js';
+import { createWritingJobsLimiter } from '../middleware/rateLimiter.js';
 import { validate } from '../middleware/validate.js';
 
 /**
  * Writing routes (SNZ-026 creation, SNZ-027 list, SNZ-028 detail, SNZ-029
- * delete).
+ * delete; creation throttled SNZ-052).
  */
 export const writingRouter = Router();
+
+// Authenticated-user buckets: abuse accounting starts after identity is known.
+const writingJobsLimiter = createWritingJobsLimiter();
 
 writingRouter.post(
   '/writing/jobs',
   requireAuth,
+  writingJobsLimiter,
   validate({ body: WritingJobRequestSchema }),
   asyncHandler(createWritingJob),
 );

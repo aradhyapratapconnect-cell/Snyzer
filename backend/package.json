@@ -18,6 +18,7 @@
     "@snyzer/shared": "*",
     "@supabase/supabase-js": "^2.116.0",
     "express": "^4.22.2",
+    "express-rate-limit": "^8.7.0",
     "helmet": "^8.3.0",
     "pg": "^8.23.0",
     "pino": "^9.14.0",

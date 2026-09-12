@@ -1,6 +1,7 @@
 import express, { type Express } from 'express';
 import helmet from 'helmet';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import { createApiLimiter } from './middleware/rateLimiter.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
 import { healthRouter } from './routes/health.js';
 import { accountRouter } from './routes/account.js';
@@ -8,7 +9,7 @@ import { preferencesRouter } from './routes/preferences.js';
 import { writingRouter } from './routes/writing.js';
 
 /**
- * Backend Express application factory (SNZ-002).
+ * Backend Express application factory (SNZ-002; rate limiting SNZ-052).
  *
  * Returns a fresh app instance so integration tests can exercise routes via
  * supertest without binding a network port.
@@ -26,6 +27,14 @@ export function createApp(): Express {
   app.use(express.json({ limit: JSON_BODY_LIMIT }));
 
   app.use('/api/v1', healthRouter);
+
+  // General abuse guard on protected resources (health stays unthrottled
+  // for monitoring). Endpoint-specific limiters live on their routes.
+  const apiLimiter = createApiLimiter();
+  app.use('/api/v1/writing', apiLimiter);
+  app.use('/api/v1/preferences', apiLimiter);
+  app.use('/api/v1/account', apiLimiter);
+
   app.use('/api/v1', writingRouter);
   app.use('/api/v1', preferencesRouter);
   app.use('/api/v1', accountRouter);
