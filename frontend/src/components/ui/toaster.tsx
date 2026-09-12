@@ -12,10 +12,12 @@ import { usePreferencesStore } from '../../stores/usePreferencesStore.js';
  */
 export function Toaster() {
   const theme = usePreferencesStore((state) => state.theme);
-  const dark =
-    typeof window === 'undefined'
-      ? false
-      : isDarkTheme(theme, window.matchMedia('(prefers-color-scheme: dark)').matches);
+  // matchMedia is universal in browsers but absent in some test/SSR
+  // environments — fall back to light rather than crashing the tree.
+  const canMatchMedia = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
+  const dark = canMatchMedia
+    ? isDarkTheme(theme, window.matchMedia('(prefers-color-scheme: dark)').matches)
+    : false;
 
   return (
     <SonnerToaster
