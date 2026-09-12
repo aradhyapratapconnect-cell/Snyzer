@@ -1,16 +1,16 @@
 import type { NextFunction, Request, Response } from 'express';
-import { queryDatabase } from '../config/database.js';
 import { getSupabaseAdmin } from '../lib/supabase.js';
 import { ServiceUnavailableError, UnauthorizedError } from '../middleware/errorHandler.js';
+import { purgeUserAccount } from '../services/privacy/dataRetentionService.js';
 
 /**
- * Account deletion endpoint (SNZ-034).
+ * Account deletion endpoint (SNZ-034; purge logic SNZ-055).
  *
  * `DELETE /api/v1/account` permanently purges the caller's data. Auth user
  * removal goes first so a failure leaves everything intact and retryable;
- * profile deletion cascades to preferences, jobs, and usage events at the
- * database layer (audit rows detach via `SET NULL` per SNZ-009). The client
- * signs out and redirects after a 200 — session cleanup is frontend-owned.
+ * `purgeUserAccount` then removes the profile (cascading to preferences,
+ * jobs, and usage events) and records the audit event. The client signs out
+ * and redirects after a 200 — session cleanup is frontend-owned.
  */
 export async function deleteAccount(
   req: Request,
@@ -27,7 +27,7 @@ export async function deleteAccount(
     if (error !== null) {
       throw new ServiceUnavailableError('Could not delete your account. Please try again.');
     }
-    await queryDatabase('DELETE FROM profiles WHERE id = $1', [userId]);
+    await purgeUserAccount(userId);
 
     res.status(200).json({ deleted: true });
   } catch (error) {

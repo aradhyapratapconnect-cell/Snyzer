@@ -26,12 +26,13 @@ interface Statement {
 
 function installFakeDb() {
   const statements: Statement[] = [];
+  const runQuery = async (text: string, params?: unknown[]) => {
+    statements.push({ text, params });
+    return { rows: [] };
+  };
   const pool = {
-    query: vi.fn(async (text: string, params?: unknown[]) => {
-      statements.push({ text, params });
-      return { rows: [] };
-    }),
-    connect: vi.fn(async () => ({ query: vi.fn(), release: vi.fn() })),
+    query: vi.fn(runQuery),
+    connect: vi.fn(async () => ({ query: vi.fn(runQuery), release: vi.fn() })),
   } as unknown as Pool;
   _setPoolForTests(pool);
   return { statements };
