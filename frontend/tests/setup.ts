@@ -29,6 +29,16 @@ if (typeof window !== 'undefined' && typeof window.Element !== 'undefined') {
   }
 }
 
+// jsdom lacks ResizeObserver, which Radix measurement hooks require.
+if (typeof window !== 'undefined' && typeof window.ResizeObserver === 'undefined') {
+  class ResizeObserverStub {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  }
+  window.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
+}
+
 // Vitest does not enable `globals`, so Testing Library's auto-cleanup never
 // hooks in — unmount after every test to keep `screen` queries scoped to the
 // current render.
