@@ -12,7 +12,8 @@
     "lint": "eslint src tests --max-warnings=0",
     "test": "vitest run",
     "start": "node dist/server.js",
-    "db:migrate": "tsc -p tsconfig.json && node dist/scripts/migrate.js"
+    "db:migrate": "tsc -p tsconfig.json && node dist/scripts/migrate.js",
+    "security:audit": "tsc -p tsconfig.json && node dist/scripts/security-audit.js"
   },
   "dependencies": {
     "@snyzer/shared": "*",
