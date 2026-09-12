@@ -8,6 +8,7 @@ import { htmlToPlainText } from '../components/editor/html.js';
 import { AnalysisPanel } from '../components/analysis/AnalysisPanel.js';
 import { ImproveButton } from '../features/writing/ImproveButton.js';
 import { ResultDisplay } from '../features/writing/ResultDisplay.js';
+import { WorkspaceErrorOverlay } from '../features/writing/WorkspaceErrorOverlay.js';
 import { WorkspaceLayout } from '../features/writing/WorkspaceLayout.js';
 import { WritingControls } from '../features/writing/WritingControls.js';
 import { usePreferencesStore } from '../stores/usePreferencesStore.js';
@@ -101,12 +102,11 @@ export function WorkspacePage() {
               onClick={() => void submitWritingJob()}
             />
             {activeError !== null && (
-              <div
-                role="alert"
-                className="rounded-lg border border-line-light bg-muted-light p-3 text-sm text-ink-light dark:border-line-dark dark:bg-muted-dark dark:text-ink-dark"
-              >
-                {activeError.message} Your text was preserved.
-              </div>
+              <WorkspaceErrorOverlay
+                error={activeError}
+                onRetry={() => void submitWritingJob()}
+                retrying={isProcessing}
+              />
             )}
           </div>
         }
