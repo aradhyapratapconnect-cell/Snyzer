@@ -1,9 +1,12 @@
 /**
- * Minimal shared runtime helpers for SNZ-001.
+ * Shared Zod domain schemas (SNZ-016; helpers predate from SNZ-001).
  *
- * Zod-based domain schemas arrive in SNZ-016. No backend-only or
- * frontend-only dependencies may be imported here.
+ * Only Zod may be imported here — no backend-only or frontend-only
+ * dependencies, so both workspaces can consume these contracts.
  */
+export * from './writing.js';
+export * from './preferences.js';
+export * from './auth.js';
 
 export const SHARED_SCHEMAS_VERSION = '0.1.0' as const;
 
