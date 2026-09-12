@@ -1,21 +1,25 @@
 import type { WritingJobRequest, WritingJobResponse } from '@snyzer/shared';
-import { queryDatabase, withTransaction } from '../../config/database.js';
+import { withTransaction } from '../../config/database.js';
 import { AppError, TextTooLongError } from '../../middleware/errorHandler.js';
 import type { AIProvider } from '../ai/AIProvider.js';
 import { createOpenRouterProviderFromEnv } from '../ai/OpenRouterProvider.js';
+import { checkDailyJobQuota, DEFAULT_DAILY_JOB_LIMIT } from '../usage/usageService.js';
 
 /**
- * Writing-job orchestration (SNZ-026).
+ * Writing-job orchestration (SNZ-026; quota SNZ-030).
  *
- * Lifecycle per request: enforce the configured text limit → persist the job
- * as `processing` → run the AI provider → atomically (one transaction) mark
- * the job `completed`/`failed` and record the usage event → return the §17
- * response job object. Failures update the job row before propagating so no
- * job is stuck in `processing` and every attempt is accounted.
+ * Lifecycle per request: enforce the configured text limit → in one
+ * transaction, take the per-user advisory lock, enforce the daily quota, and
+ * persist the job as `processing` → run the AI provider → atomically (one
+ * transaction) mark the job `completed`/`failed` and record the usage event
+ * → return the §17 response job object. The lock makes check-then-insert
+ * race-safe across concurrent requests. Failures update the job row before
+ * propagating so no job is stuck in `processing` and every attempt is
+ * accounted.
  *
  * Column mapping: `writing_jobs` has no `editor_mode` column, so editor mode
  * and preference targets ride in `settings` JSONB. Usage pricing arrives
- * with SNZ-030 (`estimated_cost` stays NULL here).
+ * with billing (`estimated_cost` stays NULL here).
  */
 export interface WritingJobInput {
   userId: string;
@@ -25,6 +29,7 @@ export interface WritingJobInput {
 export interface WritingServiceDeps {
   provider?: AIProvider;
   maxTextLength?: number;
+  maxDailyJobs?: number;
 }
 
 export type CompletedJob = WritingJobResponse['job'];
@@ -46,17 +51,23 @@ export async function executeWritingJob(
     throw new TextTooLongError();
   }
   const provider = deps.provider ?? createOpenRouterProviderFromEnv();
+  const maxDailyJobs = deps.maxDailyJobs ?? DEFAULT_DAILY_JOB_LIMIT;
 
   const settings = JSON.stringify({
     editorMode: input.job.editorMode,
     preferences: input.job.preferences,
   });
-  const created = await queryDatabase<JobRow>(
-    `INSERT INTO writing_jobs (user_id, input_text, mode, tone, settings, status)
-     VALUES ($1, $2, $3, $4, $5::jsonb, 'processing')
-     RETURNING id`,
-    [input.userId, input.job.inputText, input.job.mode, input.job.tone, settings],
-  );
+  const created = await withTransaction(async (query) => {
+    // Serializes this user's check-and-insert against concurrent requests.
+    await query('SELECT pg_advisory_xact_lock(hashtext($1))', [input.userId]);
+    await checkDailyJobQuota(input.userId, query, maxDailyJobs);
+    return query<JobRow>(
+      `INSERT INTO writing_jobs (user_id, input_text, mode, tone, settings, status)
+       VALUES ($1, $2, $3, $4, $5::jsonb, 'processing')
+       RETURNING id`,
+      [input.userId, input.job.inputText, input.job.mode, input.job.tone, settings],
+    );
+  });
   const jobId = created[0]?.id;
   if (jobId === undefined) {
     throw new Error('Failed to persist writing job.');

@@ -29,6 +29,7 @@ export const backendEnvSchema = z.object({
   MAX_TEXT_LENGTH: z.coerce.number().int().positive().default(10000),
   RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().positive().default(30),
+  DAILY_JOB_LIMIT: z.coerce.number().int().positive().default(50),
 });
 
 export type BackendEnv = z.infer<typeof backendEnvSchema>;

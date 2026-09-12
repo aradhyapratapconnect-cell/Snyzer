@@ -22,7 +22,12 @@ describe('loadBackendEnv', () => {
     expect(env.MAX_TEXT_LENGTH).toBe(5000);
     expect(env.RATE_LIMIT_WINDOW_SECONDS).toBe(60);
     expect(env.RATE_LIMIT_MAX_REQUESTS).toBe(30);
+    expect(env.DAILY_JOB_LIMIT).toBe(50);
     expect(env.OPENROUTER_APP_NAME).toBe('Snyzer');
+  });
+
+  it('parses a custom DAILY_JOB_LIMIT', () => {
+    expect(loadBackendEnv({ ...valid, DAILY_JOB_LIMIT: '25' }).DAILY_JOB_LIMIT).toBe(25);
   });
 
   it('throws naming OPENROUTER_API_KEY when it is omitted', () => {

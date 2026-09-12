@@ -27,30 +27,31 @@ interface Statement {
   params?: unknown[];
 }
 
-function makeFakePool(statements: Statement[]) {
+function makeFakePool(statements: Statement[], dailyUsed = '0') {
+  const runQuery = async (text: string, params?: unknown[]) => {
+    statements.push({ text, params });
+    if (text.includes('INSERT INTO writing_jobs')) {
+      return { rows: [{ id: JOB_ID }] };
+    }
+    if (text.includes('COUNT(*)')) {
+      return { rows: [{ count: dailyUsed }] };
+    }
+    return { rows: [] };
+  };
   const client = {
-    query: vi.fn(async (text: string, params?: unknown[]) => {
-      statements.push({ text, params });
-      return { rows: [] };
-    }),
+    query: vi.fn(runQuery),
     release: vi.fn(),
   };
   const pool = {
-    query: vi.fn(async (text: string, params?: unknown[]) => {
-      statements.push({ text, params });
-      if (text.includes('INSERT INTO writing_jobs')) {
-        return { rows: [{ id: JOB_ID }] };
-      }
-      return { rows: [] };
-    }),
+    query: vi.fn(runQuery),
     connect: vi.fn(async () => client),
   } as unknown as Pool;
   return { pool, client };
 }
 
-function installFakeDb() {
+function installFakeDb(dailyUsed = '0') {
   const statements: Statement[] = [];
-  const { pool, client } = makeFakePool(statements);
+  const { pool, client } = makeFakePool(statements, dailyUsed);
   _setPoolForTests(pool);
   return { statements, client };
 }
@@ -169,11 +170,13 @@ describe('POST /api/v1/writing/jobs', () => {
     const updateIndex = texts.findIndex((t) => t.includes("status = 'completed'"));
     const usageIndex = texts.findIndex((t) => t.includes('INSERT INTO usage_events'));
     const beginIndex = texts.findIndex((t) => t === 'BEGIN');
-    const commitIndex = texts.findIndex((t) => t === 'COMMIT');
     expect(updateIndex).toBeGreaterThan(-1);
     expect(usageIndex).toBeGreaterThan(updateIndex);
     expect(beginIndex).toBeLessThan(updateIndex);
-    expect(commitIndex).toBeGreaterThan(usageIndex);
+    // The finalize transaction commits after the usage insert (an earlier
+    // COMMIT belongs to the creation transaction).
+    const finalizeCommit = texts.findIndex((t, i) => t === 'COMMIT' && i > usageIndex);
+    expect(finalizeCommit).toBeGreaterThan(usageIndex);
 
     const usage = statements[usageIndex];
     expect(usage?.params).toEqual([
@@ -260,6 +263,57 @@ describe('executeWritingJob with MockAIProvider', () => {
       status: 'completed',
       outputText: 'Clear writing wins.',
     });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('locks, checks quota, then inserts — in that order', async () => {
+    const { statements } = installFakeDb();
+
+    await executeWritingJob(
+      {
+        userId: USER_ID,
+        job: { ...validBody, mode: 'clarity', tone: 'professional', editorMode: 'plain' },
+      },
+      { provider: new MockAIProvider(), maxTextLength: 10_000, maxDailyJobs: 50 },
+    );
+
+    const texts = statements.map((s) => s.text);
+    const lock = texts.findIndex((t) => t.includes('pg_advisory_xact_lock'));
+    const quota = texts.findIndex((t) => t.includes("date_trunc('day', now())"));
+    const insert = texts.findIndex((t) => t.includes('INSERT INTO writing_jobs'));
+    expect(lock).toBeGreaterThanOrEqual(0);
+    expect(quota).toBeGreaterThan(lock);
+    expect(insert).toBeGreaterThan(quota);
+  });
+
+  it('blocks quota-exhausted users before the provider or insert', async () => {
+    const { statements } = installFakeDb('50');
+    const provider = new MockAIProvider();
+    const generate = vi.spyOn(provider, 'generateWritingRevision');
+
+    const failure = await executeWritingJob(
+      {
+        userId: USER_ID,
+        job: { ...validBody, mode: 'clarity', tone: 'professional', editorMode: 'plain' },
+      },
+      { provider, maxTextLength: 10_000, maxDailyJobs: 50 },
+    ).catch((error: unknown) => error);
+
+    expect(failure).toMatchObject({ status: 429, code: 'RATE_LIMITED' });
+    expect(generate).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(statements.some((s) => s.text.includes('INSERT INTO writing_jobs'))).toBe(false);
+  });
+});
+
+describe('POST /api/v1/writing/jobs quota', () => {
+  it('returns 429 with guidance when the daily limit is reached', async () => {
+    installFakeDb('50');
+
+    const res = await postJob(validBody).expect(429);
+
+    expect(res.body.error.code).toBe('RATE_LIMITED');
+    expect(res.body.error.message).toContain('daily writing limit');
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
