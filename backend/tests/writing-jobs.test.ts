@@ -304,6 +304,36 @@ describe('executeWritingJob with MockAIProvider', () => {
     expect(fetchMock).not.toHaveBeenCalled();
     expect(statements.some((s) => s.text.includes('INSERT INTO writing_jobs'))).toBe(false);
   });
+
+  it('strips control bytes but preserves markup verbatim through the pipeline', async () => {
+    const { statements } = installFakeDb();
+    const provider = new MockAIProvider();
+    const generate = vi.spyOn(provider, 'generateWritingRevision');
+    const NUL = String.fromCharCode(0);
+    const raw = `Discuss <script>alert('xss')</script> here${NUL} now`;
+
+    const job = await executeWritingJob(
+      {
+        userId: USER_ID,
+        job: {
+          ...validBody,
+          inputText: raw,
+          mode: 'clarity',
+          tone: 'professional',
+          editorMode: 'plain',
+        },
+      },
+      { provider, maxTextLength: 10_000 },
+    );
+
+    // Provider and persistence both receive the sanitized text.
+    expect(generate).toHaveBeenCalledWith(
+      expect.objectContaining({ inputText: "Discuss <script>alert('xss')</script> here now" }),
+    );
+    const insert = statements.find((s) => s.text.includes('INSERT INTO writing_jobs'));
+    expect(insert?.params?.[1]).toBe("Discuss <script>alert('xss')</script> here now");
+    expect(job.outputText).toContain('<script>');
+  });
 });
 
 describe('POST /api/v1/writing/jobs quota', () => {
