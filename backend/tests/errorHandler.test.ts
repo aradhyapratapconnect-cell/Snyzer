@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import {
   AppError,
   asyncHandler,
@@ -150,6 +151,26 @@ describe('errorHandler serialization', () => {
     expect(JSON.stringify(res.body)).not.toContain('stack');
     expect(loggerMocks.error).toHaveBeenCalledTimes(1);
     expect(loggerMocks.error.mock.calls[0]?.[0]).toMatchObject({ requestId: 'req-123' });
+  });
+
+  it('normalizes raw ZodErrors to 400 instead of 500', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const res = mockResponse();
+    const parsed = z.string().min(5).safeParse('ab');
+
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      errorHandler(parsed.error, mockRequest(), res as unknown as Response, noopNext);
+    }
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({
+      error: {
+        code: 'INVALID_INPUT',
+        message: 'Validation error',
+        details: expect.arrayContaining([expect.objectContaining({ message: expect.any(String) })]),
+      },
+    });
   });
 
   it('passes non-operational status codes through with mapped codes', () => {

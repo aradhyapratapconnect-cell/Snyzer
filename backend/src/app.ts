@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
 import { healthRouter } from './routes/health.js';
+import { preferencesRouter } from './routes/preferences.js';
 import { writingRouter } from './routes/writing.js';
 
 /**
@@ -25,6 +26,7 @@ export function createApp(): Express {
 
   app.use('/api/v1', healthRouter);
   app.use('/api/v1', writingRouter);
+  app.use('/api/v1', preferencesRouter);
 
   app.use(notFoundHandler);
   // Global error middleware must be registered last.

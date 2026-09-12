@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
+import { z } from 'zod';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -179,6 +180,23 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
     const isProduction = process.env.NODE_ENV === 'production';
     const message = err.status >= 500 && isProduction ? GENERIC_SERVER_MESSAGE : err.message;
     sendError(res, err.status, err.code, message, err.details);
+    return;
+  }
+
+  // Defensive parses inside controllers throw raw ZodErrors (route
+  // validation normally catches these first). Normalize them here so they
+  // can never surface as 500s.
+  if (err instanceof z.ZodError) {
+    sendError(
+      res,
+      400,
+      'INVALID_INPUT',
+      'Validation error',
+      err.issues.map((issue) => ({
+        path: issue.path.map(String).join('.'),
+        message: issue.message,
+      })),
+    );
     return;
   }
 
