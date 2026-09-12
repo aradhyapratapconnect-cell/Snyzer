@@ -70,6 +70,13 @@ export class PayloadTooLargeError extends AppError {
   }
 }
 
+/** Contract-literal 413 for over-limit writing input (FRONTEND_SPEC §17). */
+export class TextTooLongError extends AppError {
+  constructor(message = 'Text exceeds supported maximum length.') {
+    super({ status: 413, code: 'TEXT_TOO_LONG', message });
+  }
+}
+
 export class RateLimitError extends AppError {
   constructor(message = 'Rate limit exceeded. Please try again later.', details?: unknown) {
     super({ status: 429, code: 'RATE_LIMITED', message, details });

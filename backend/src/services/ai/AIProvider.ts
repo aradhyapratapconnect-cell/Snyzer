@@ -13,6 +13,12 @@ export interface AIProvider {
   /** Stable identifier, e.g. `'openrouter'` or `'mock'`. Never a secret. */
   readonly providerName: string;
 
+  /**
+   * Model attempted for usage accounting (known even when a call fails
+   * before responding). Added in SNZ-026 for failure-path usage events.
+   */
+  readonly modelName: string;
+
   /** Generates a revised text plus quality analysis for the request. */
   generateWritingRevision(request: AIWritingRequest): Promise<AIWritingResponse>;
 }

@@ -13,6 +13,7 @@ import type { AIWritingRequest, AIWritingResponse } from './types.js';
  */
 export class MockAIProvider implements AIProvider {
   readonly providerName = 'mock';
+  readonly modelName = 'mock';
 
   async generateWritingRevision(request: AIWritingRequest): Promise<AIWritingResponse> {
     if (request.inputText.trim() === '') {

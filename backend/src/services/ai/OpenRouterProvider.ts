@@ -58,6 +58,11 @@ export class OpenRouterProvider implements AIProvider {
   readonly providerName = 'openrouter';
   private readonly apiKey: string;
   private readonly model: string;
+
+  /** Model attempted (used for usage accounting, even on failures). */
+  get modelName(): string {
+    return this.model;
+  }
   private readonly siteUrl?: string;
   private readonly appName?: string;
   private readonly resilience: { timeoutMs?: number; maxRetries?: number; backoffBaseMs?: number };

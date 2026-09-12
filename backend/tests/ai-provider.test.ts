@@ -56,6 +56,7 @@ describe('MockAIProvider contract', () => {
   it('is swappable: interface consumers accept any implementation unchanged', async () => {
     const alternative: AIProvider = {
       providerName: 'inline-fake',
+      modelName: 'inline-fake',
       generateWritingRevision: async () => ({
         revisedText: 'fake revision',
         analysis: {

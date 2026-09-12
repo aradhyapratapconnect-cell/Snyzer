@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
 import { healthRouter } from './routes/health.js';
+import { writingRouter } from './routes/writing.js';
 
 /**
  * Backend Express application factory (SNZ-002).
@@ -23,6 +24,7 @@ export function createApp(): Express {
   app.use(express.json({ limit: JSON_BODY_LIMIT }));
 
   app.use('/api/v1', healthRouter);
+  app.use('/api/v1', writingRouter);
 
   app.use(notFoundHandler);
   // Global error middleware must be registered last.

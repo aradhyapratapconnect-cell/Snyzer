@@ -52,6 +52,39 @@ export async function queryDatabase<T extends QueryResultRow>(
   return result.rows;
 }
 
+/** Single-statement executor bound to a transaction client. */
+export type TransactionQuery = <T extends QueryResultRow>(
+  text: string,
+  params?: unknown[],
+) => Promise<T[]>;
+
+/**
+ * Runs `fn` inside one transaction on a dedicated client (SNZ-026):
+ * multi-statement writes (job update + usage event) commit or roll back
+ * together. The client is always released.
+ */
+export async function withTransaction<T>(fn: (query: TransactionQuery) => Promise<T>): Promise<T> {
+  const client = await getPool().connect();
+  try {
+    await client.query('BEGIN');
+    const result = await fn(async (text, params) => {
+      const outcome = await client.query(text, params as unknown[] | undefined);
+      return outcome.rows;
+    });
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      // Rollback failure must not mask the original error.
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export interface DatabaseHealth {
   ok: boolean;
   latencyMs: number;
