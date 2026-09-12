@@ -1,7 +1,9 @@
 import { createBrowserRouter, Link } from 'react-router-dom';
 import { App } from './App.js';
+import { ForgotPasswordPage } from './ForgotPasswordPage.js';
 import { LoginPage } from './LoginPage.js';
 import { RegisterPage } from './RegisterPage.js';
+import { ResetPasswordPage } from './ResetPasswordPage.js';
 import { WorkspacePage } from './WorkspacePage.js';
 
 /**
@@ -37,8 +39,8 @@ export function GettingStarted() {
 }
 
 /**
- * Base router (SNZ-003; auth + workspace routes SNZ-013). Route guards
- * arrive with SNZ-015.
+ * Base router (SNZ-003; auth + workspace routes SNZ-013; recovery SNZ-014).
+ * Route guards arrive with SNZ-015.
  */
 export const router = createBrowserRouter([
   {
@@ -48,6 +50,8 @@ export const router = createBrowserRouter([
       { index: true, element: <GettingStarted /> },
       { path: 'login', element: <LoginPage /> },
       { path: 'register', element: <RegisterPage /> },
+      { path: 'forgot-password', element: <ForgotPasswordPage /> },
+      { path: 'reset-password', element: <ResetPasswordPage /> },
       { path: 'workspace', element: <WorkspacePage /> },
     ],
   },

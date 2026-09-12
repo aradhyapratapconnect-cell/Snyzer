@@ -3,13 +3,16 @@ import { create } from 'zustand';
 import { getSupabaseClient } from '../lib/supabase.js';
 
 /**
- * Authentication state (SNZ-011).
+ * Authentication state (SNZ-011; sign-out SNZ-014).
  *
  * Mirrors the Supabase session for UI routing and API calls: components read
  * `isInitialized` (session check in flight), `isAuthenticated`, `user`, and
  * `session`. `initialize()` loads the persisted session once and subscribes
  * to `onAuthStateChange` so login/logout anywhere refresh the store. It is
- * idempotent — repeat calls reuse the existing subscription.
+ * idempotent — repeat calls reuse the existing subscription. `signOut()`
+ * revokes the session and always resets local state, even if the server call
+ * fails. A failed token refresh surfaces as `SIGNED_OUT`, which clears the
+ * store so the UI prompts re-authentication (route guards arrive SNZ-015).
  */
 export interface AuthState {
   isInitialized: boolean;
@@ -17,6 +20,7 @@ export interface AuthState {
   user: User | null;
   session: Session | null;
   initialize: () => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 export const initialAuthState = {
@@ -49,6 +53,15 @@ export const useAuthStore = create<AuthState>()((set) => ({
     supabase.auth.onAuthStateChange((_event, session) => {
       set(applySession(session));
     });
+  },
+  signOut: async () => {
+    try {
+      await getSupabaseClient().auth.signOut();
+    } catch {
+      // Best effort: a failed revocation must not keep the user signed in.
+    } finally {
+      set({ ...applySession(null), isInitialized: true });
+    }
   },
 }));
 
