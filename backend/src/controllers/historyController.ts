@@ -1,11 +1,10 @@
 import type { NextFunction, Request, Response } from 'express';
 import { z } from 'zod';
-import { queryDatabase } from '../config/database.js';
+import { queryDatabase, withTransaction } from '../config/database.js';
 import { NotFoundError, UnauthorizedError } from '../middleware/errorHandler.js';
 
 /**
- * Writing-history endpoints (SNZ-027 list, SNZ-028 detail; delete arrives
- * SNZ-029).
+ * Writing-history endpoints (SNZ-027 list, SNZ-028 detail, SNZ-029 delete).
  *
  * Every query filters explicitly by the authenticated `user_id` in addition
  * to RLS. List views return truncated previews; only the owned detail view
@@ -123,6 +122,49 @@ export async function getWritingJob(
       throw new NotFoundError();
     }
     res.status(200).json({ job });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteWritingJob(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (req.user === undefined) {
+      throw new UnauthorizedError();
+    }
+    // Same UUID validation as the detail handler: malformed IDs halt here.
+    const { id } = JobIdParamsSchema.parse(req.params);
+    const userId = req.user.id;
+
+    // Delete and audit together: the audit row references a job that must
+    // still exist at commit time, and neither may persist without the other.
+    // Metadata carries IDs only — never writing content (SNZ-009 rule).
+    const deleted = await withTransaction(async (query) => {
+      const rows = await query<{ id: string }>(
+        'DELETE FROM writing_jobs WHERE id = $1 AND user_id = $2 RETURNING id',
+        [id, userId],
+      );
+      if (rows[0] === undefined) {
+        return null;
+      }
+      await query(
+        `INSERT INTO audit_events (actor_user_id, event_type, target_type, target_id, metadata)
+         VALUES ($1, 'JOB_DELETED', 'writing_job', $2, '{}'::jsonb)`,
+        [userId, id],
+      );
+      return rows[0].id;
+    });
+
+    if (deleted === null) {
+      // Missing and foreign-owned are indistinguishable (no probing oracle).
+      // The transaction above committed nothing when no row matched.
+      throw new NotFoundError();
+    }
+    res.status(200).json({ deleted: true, id: deleted });
   } catch (error) {
     next(error);
   }

@@ -211,22 +211,33 @@ const fullJobRow = {
   completed_at: '2026-09-10T10:00:02.000Z',
 };
 
-/** Fake DB that enforces the ownership predicate like the real query does. */
+/** Fake DB that enforces the ownership predicate like the real queries do. */
 function installDetailFakeDb() {
   const statements: Statement[] = [];
-  const pool = {
-    query: vi.fn(async (text: string, params?: unknown[]) => {
-      statements.push({ text, params });
-      if (text.includes('WHERE id = $1')) {
-        const [id, userId] = params as [string, string];
-        if (id === JOB_ID && userId === USER_ID) {
-          return { rows: [fullJobRow] };
-        }
-        return { rows: [] };
+  const runQuery = async (text: string, params?: unknown[]) => {
+    statements.push({ text, params });
+    if (text.includes('DELETE FROM writing_jobs')) {
+      const [id, userId] = params as [string, string];
+      if (id === JOB_ID && userId === USER_ID) {
+        return { rows: [{ id: JOB_ID }] };
       }
       return { rows: [] };
-    }),
-    connect: vi.fn(async () => ({ query: vi.fn(), release: vi.fn() })),
+    }
+    if (text.includes('WHERE id = $1')) {
+      const [id, userId] = params as [string, string];
+      if (id === JOB_ID && userId === USER_ID) {
+        return { rows: [fullJobRow] };
+      }
+      return { rows: [] };
+    }
+    return { rows: [] };
+  };
+  const pool = {
+    query: vi.fn(runQuery),
+    connect: vi.fn(async () => ({
+      query: vi.fn(runQuery),
+      release: vi.fn(),
+    })),
   } as unknown as Pool;
   _setPoolForTests(pool);
   return { statements };
@@ -299,5 +310,59 @@ describe('GET /api/v1/writing/jobs/:id', () => {
       expect.arrayContaining([expect.objectContaining({ location: 'params', path: 'id' })]),
     );
     expect(JSON.stringify(res.body)).not.toContain('stack');
+  });
+});
+
+describe('DELETE /api/v1/writing/jobs/:id', () => {
+  function deleteJob(id: string) {
+    return request(app)
+      .delete(`/api/v1/writing/jobs/${id}`)
+      .set('Authorization', 'Bearer test-token');
+  }
+
+  it('deletes the owned job and audits the deletion without writing content', async () => {
+    const { statements } = installDetailFakeDb();
+
+    const res = await deleteJob(JOB_ID).expect(200);
+
+    expect(res.body).toEqual({ deleted: true, id: JOB_ID });
+
+    const texts = statements.map((s) => s.text);
+    const deleteStmt = statements.find((s) => s.text.includes('DELETE FROM writing_jobs'));
+    expect(deleteStmt?.params).toEqual([JOB_ID, USER_ID]);
+
+    const audit = statements.find((s) => s.text.includes('INSERT INTO audit_events'));
+    expect(audit?.params?.[0]).toBe(USER_ID);
+    expect(audit?.params?.[1]).toBe(JOB_ID);
+    expect(audit?.text).toContain("'JOB_DELETED'");
+
+    // Transactional: delete + audit commit together; no writing text logged.
+    expect(texts).toEqual(
+      expect.arrayContaining(['BEGIN', expect.stringContaining('DELETE FROM writing_jobs')]),
+    );
+    expect(texts.indexOf('COMMIT')).toBeGreaterThan(
+      texts.findIndex((t) => t.includes('INSERT INTO audit_events')),
+    );
+    expect(JSON.stringify(statements)).not.toContain('complete original draft');
+  });
+
+  it('returns 404 for foreign-owned jobs without deleting or auditing', async () => {
+    const { statements } = installDetailFakeDb();
+    verifyAs(OTHER_USER_ID);
+
+    const res = await deleteJob(JOB_ID).expect(404);
+
+    expect(res.body.error.code).toBe('NOT_FOUND');
+    expect(statements.some((s) => s.text.includes('INSERT INTO audit_events'))).toBe(false);
+  });
+
+  it('returns 404 for missing jobs and rejects malformed UUIDs', async () => {
+    installDetailFakeDb();
+
+    const missing = await deleteJob(UNKNOWN_JOB_ID).expect(404);
+    expect(missing.body.error.code).toBe('NOT_FOUND');
+
+    const malformed = await deleteJob('not-a-uuid').expect(400);
+    expect(malformed.body.error.code).toBe('INVALID_INPUT');
   });
 });
