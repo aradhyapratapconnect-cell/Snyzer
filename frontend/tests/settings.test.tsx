@@ -5,12 +5,13 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SettingsPage } from '../src/app/settings/page.js';
 import { GettingStarted } from '../src/app/router.js';
+import { Toaster } from '../src/components/ui/toaster.js';
 import { useAuthStore } from '../src/stores/useAuthStore.js';
 
 /**
- * SNZ-034 component tests: settings content, deletion-modal discipline, and
- * the full delete → sign-out → home-notice flow. Supabase and the API
- * client are mocked; no network involved.
+ * SNZ-034 component tests (SNZ-039 toast): settings content,
+ * deletion-modal discipline, and the full delete → sign-out → toast flow.
+ * Supabase and the API client are mocked; no network involved.
  */
 const apiRequestMock = vi.fn();
 vi.mock('../src/lib/apiClient.js', () => ({
@@ -37,6 +38,7 @@ function signedInState() {
 function renderSettings(path = '/settings') {
   return render(
     <MemoryRouter initialEntries={[path]}>
+      <Toaster />
       <Routes>
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/" element={<GettingStarted />} />
@@ -47,6 +49,14 @@ function renderSettings(path = '/settings') {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn(() => ({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
+  );
   apiRequestMock.mockResolvedValue({});
   signOutMock.mockResolvedValue({ error: null });
   useAuthStore.setState({
@@ -103,7 +113,7 @@ describe('DeleteAccountModal', () => {
     expect(apiRequestMock).not.toHaveBeenCalled();
   });
 
-  it('deletes, signs out, and lands home with a notice', async () => {
+  it('deletes, signs out, toasts, and lands home', async () => {
     const user = userEvent.setup();
     await openModal(user);
 
@@ -115,6 +125,9 @@ describe('DeleteAccountModal', () => {
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
     expect(
       await screen.findByText('Your account and all of its data have been permanently deleted.'),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Improve your writing' }),
     ).toBeInTheDocument();
   });
 

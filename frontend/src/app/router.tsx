@@ -1,4 +1,4 @@
-import { createBrowserRouter, Link, useLocation } from 'react-router-dom';
+import { createBrowserRouter, Link } from 'react-router-dom';
 import { App } from './App.js';
 import { ForgotPasswordPage } from './ForgotPasswordPage.js';
 import { LoginPage } from './LoginPage.js';
@@ -10,26 +10,11 @@ import { ProtectedRoute } from '../features/auth/ProtectedRoute.js';
 
 /**
  * Placeholder index content until the workspace feature route arrives.
- * Exported so component tests can mount the same route structure. Also
- * surfaces one-shot notices (e.g. post-deletion confirmation) carried in
- * navigation state until the toast system arrives (SNZ-039).
+ * Exported so component tests can mount the same route structure.
  */
 export function GettingStarted() {
-  const location = useLocation();
-  const notice =
-    typeof location.state === 'object' && location.state !== null && 'notice' in location.state
-      ? String((location.state as { notice: unknown }).notice)
-      : null;
   return (
     <section aria-label="Getting started">
-      {notice !== null && (
-        <div
-          role="status"
-          className="mb-4 rounded-lg border border-line-light bg-muted-light p-3 text-sm text-ink-light dark:border-line-dark dark:bg-muted-dark dark:text-ink-dark"
-        >
-          {notice}
-        </div>
-      )}
       <h1 className="text-2xl font-semibold">Improve your writing</h1>
       <p className="mt-2 text-sm text-subink-light dark:text-subink-dark">
         Sign in and open the workspace to revise text while preserving your meaning and intent. The

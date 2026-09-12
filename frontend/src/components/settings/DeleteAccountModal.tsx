@@ -4,16 +4,17 @@ import { Button } from '../ui/button.js';
 import { Input } from '../ui/input.js';
 import { Label } from '../ui/label.js';
 import { Spinner } from '../ui/spinner.js';
+import { toast } from '../ui/toaster.js';
 import { apiRequest } from '../../lib/apiClient.js';
 import { useAuthStore } from '../../stores/useAuthStore.js';
 
 /**
- * Account-deletion confirmation modal (SNZ-034).
+ * Account-deletion confirmation modal (SNZ-034; success toast SNZ-039).
  *
  * Destructive action guarded by typing `DELETE`. Closes on Escape, Cancel,
  * or success; focuses the confirmation input on open and returns focus to
- * the trigger on close. On success it purges the session and redirects home
- * with a notice (a toast system arrives in SNZ-039).
+ * the trigger on close. On success it purges the session, confirms via
+ * toast, and redirects home.
  */
 const CONFIRMATION_TEXT = 'DELETE';
 
@@ -62,9 +63,8 @@ export function DeleteAccountModal({ open, onClose }: { open: boolean; onClose: 
       await apiRequest('/account', { method: 'DELETE' });
       await signOut();
       onClose();
-      navigate('/', {
-        state: { notice: 'Your account and all of its data have been permanently deleted.' },
-      });
+      toast.success('Your account and all of its data have been permanently deleted.');
+      navigate('/');
     } catch {
       setError('Could not delete your account. Please try again.');
       setDeleting(false);

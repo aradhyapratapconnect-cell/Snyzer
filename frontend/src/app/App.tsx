@@ -1,10 +1,11 @@
 import { SHARED_PACKAGE_VERSION } from '@snyzer/shared';
 import { AppLayout } from '../components/layout/AppLayout.js';
+import { Toaster } from '../components/ui/toaster.js';
 
 /**
  * Standard root layout container (SNZ-003; header session menu SNZ-014;
- * navigation shell SNZ-036). Owns the themed page canvas and footer;
- * `AppLayout` owns the header and routed content.
+ * navigation shell SNZ-036; toast provider SNZ-039). Owns the themed page
+ * canvas and footer; `AppLayout` owns the header and routed content.
  */
 export function App() {
   return (
@@ -19,6 +20,7 @@ export function App() {
           <span>shared v{SHARED_PACKAGE_VERSION}</span>
         </div>
       </footer>
+      <Toaster />
     </div>
   );
 }
