@@ -1,5 +1,8 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Link } from 'react-router-dom';
 import { App } from './App.js';
+import { LoginPage } from './LoginPage.js';
+import { RegisterPage } from './RegisterPage.js';
+import { WorkspacePage } from './WorkspacePage.js';
 
 /**
  * Placeholder index content until the workspace feature route arrives.
@@ -13,18 +16,39 @@ export function GettingStarted() {
         Sign in and open the workspace to revise text while preserving your meaning and intent. The
         full editor arrives in an upcoming ticket.
       </p>
+      <p className="mt-4 text-sm">
+        <Link
+          to="/login"
+          className="font-medium text-primary hover:underline dark:text-primary-dark"
+        >
+          Sign in
+        </Link>{' '}
+        <span className="text-subink-light dark:text-subink-dark">or</span>{' '}
+        <Link
+          to="/register"
+          className="font-medium text-primary hover:underline dark:text-primary-dark"
+        >
+          create an account
+        </Link>
+        .
+      </p>
     </section>
   );
 }
 
 /**
- * Base router (SNZ-003). A single root route renders the application layout;
- * feature routes (workspace, history, settings) arrive in later tickets.
+ * Base router (SNZ-003; auth + workspace routes SNZ-013). Route guards
+ * arrive with SNZ-015.
  */
 export const router = createBrowserRouter([
   {
     path: '/',
     element: <App />,
-    children: [{ index: true, element: <GettingStarted /> }],
+    children: [
+      { index: true, element: <GettingStarted /> },
+      { path: 'login', element: <LoginPage /> },
+      { path: 'register', element: <RegisterPage /> },
+      { path: 'workspace', element: <WorkspacePage /> },
+    ],
   },
 ]);
