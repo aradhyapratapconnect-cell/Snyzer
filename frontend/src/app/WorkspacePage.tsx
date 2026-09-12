@@ -5,7 +5,9 @@ import { EditorModeToggle } from '../components/editor/EditorModeToggle.js';
 import { PlainEditor } from '../components/editor/PlainEditor.js';
 import { RichEditor } from '../components/editor/RichEditor.js';
 import { htmlToPlainText } from '../components/editor/html.js';
+import { AnalysisPanel } from '../components/analysis/AnalysisPanel.js';
 import { ImproveButton } from '../features/writing/ImproveButton.js';
+import { ResultDisplay } from '../features/writing/ResultDisplay.js';
 import { WorkspaceLayout } from '../features/writing/WorkspaceLayout.js';
 import { WritingControls } from '../features/writing/WritingControls.js';
 import { usePreferencesStore } from '../stores/usePreferencesStore.js';
@@ -14,10 +16,10 @@ import { useWorkspaceStore } from '../stores/useWorkspaceStore.js';
 /**
  * Writing workspace page (SNZ-013 placeholder → SNZ-046 composition).
  *
- * Composes the editor, mode toggle, controls, and submit action over the
- * workspace store. Mode switches convert content without loss (rich→plain
- * strips to text) and persist the choice to preferences. The result pane is
- * a minimal preview until SNZ-047's ResultDisplay (copy/edit/rerun) lands.
+ * Composes the editor, mode toggle, controls, submit action, result display,
+ * and analysis panel over the workspace store. Mode switches convert content
+ * without loss (rich→plain strips to text) and persist the choice to
+ * preferences.
  */
 export function WorkspacePage() {
   const inputText = useWorkspaceStore((state) => state.inputText);
@@ -109,16 +111,10 @@ export function WorkspacePage() {
           </div>
         }
         result={
-          // Minimal preview; SNZ-047 replaces this with ResultDisplay.
-          currentResult === null ? (
-            <p className="text-sm text-subink-light dark:text-subink-dark">
-              Your improved text will appear here.
-            </p>
-          ) : (
-            <div className="whitespace-pre-wrap text-sm leading-relaxed">
-              {currentResult.outputText}
-            </div>
-          )
+          <div className="space-y-6">
+            <ResultDisplay />
+            {currentResult !== null && <AnalysisPanel analysis={currentResult.analysis} />}
+          </div>
         }
       />
     </div>
