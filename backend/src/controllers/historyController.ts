@@ -1,18 +1,24 @@
 import type { NextFunction, Request, Response } from 'express';
 import { z } from 'zod';
 import { queryDatabase } from '../config/database.js';
-import { UnauthorizedError } from '../middleware/errorHandler.js';
+import { NotFoundError, UnauthorizedError } from '../middleware/errorHandler.js';
 
 /**
- * Writing-history endpoints (SNZ-027 list; detail/delete arrive SNZ-028/029).
+ * Writing-history endpoints (SNZ-027 list, SNZ-028 detail; delete arrives
+ * SNZ-029).
  *
  * Every query filters explicitly by the authenticated `user_id` in addition
- * to RLS, orders newest-first to use `idx_writing_jobs_user_created`, and
- * returns truncated previews — never full texts — in list views.
+ * to RLS. List views return truncated previews; only the owned detail view
+ * returns full texts. Missing and foreign-owned jobs are indistinguishable
+ * (404 either way) so IDs cannot be probed across tenants.
  */
 export const HistoryQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
   offset: z.coerce.number().int().min(0).default(0),
+});
+
+export const JobIdParamsSchema = z.object({
+  id: z.string().uuid(),
 });
 
 const PREVIEW_CHARS = 200;
@@ -29,6 +35,25 @@ interface JobSummaryRow {
 
 interface CountRow {
   count: string;
+}
+
+interface JobDetailRow {
+  id: string;
+  input_text: string;
+  output_text: string | null;
+  mode: string;
+  tone: string;
+  settings: unknown;
+  analysis: unknown;
+  model: string | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  total_tokens: number | null;
+  processing_ms: number | null;
+  status: string;
+  error_code: string | null;
+  created_at: string;
+  completed_at: string | null;
 }
 
 export async function listWritingJobs(
@@ -67,6 +92,37 @@ export async function listWritingJobs(
       limit,
       offset,
     });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getWritingJob(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (req.user === undefined) {
+      throw new UnauthorizedError();
+    }
+    // Re-parsed for the same defense-in-depth reason as the list handler:
+    // malformed UUIDs fail here with 400 instead of reaching the database.
+    const { id } = JobIdParamsSchema.parse(req.params);
+
+    const rows = await queryDatabase<JobDetailRow>(
+      `SELECT id, input_text, output_text, mode, tone, settings, analysis,
+              model, input_tokens, output_tokens, total_tokens, processing_ms,
+              status, error_code, created_at, completed_at
+       FROM writing_jobs
+       WHERE id = $1 AND user_id = $2`,
+      [id, req.user.id],
+    );
+    const job = rows[0];
+    if (job === undefined) {
+      throw new NotFoundError();
+    }
+    res.status(200).json({ job });
   } catch (error) {
     next(error);
   }

@@ -181,3 +181,123 @@ describe('GET /api/v1/writing/jobs', () => {
     });
   });
 });
+
+const JOB_ID = '11111111-1111-4111-8111-111111111111';
+const UNKNOWN_JOB_ID = '55555555-5555-4555-8555-555555555555';
+
+const fullJobRow = {
+  id: JOB_ID,
+  input_text: 'The complete original draft text, untruncated.',
+  output_text: 'The complete revised text, untruncated.',
+  mode: 'clarity',
+  tone: 'professional',
+  settings: { editorMode: 'plain', preferences: { clarity: 70 } },
+  analysis: {
+    readability: 72,
+    clarity: 80,
+    repetition: 12,
+    sentenceVariety: 68,
+    vocabularyComplexity: 55,
+    formality: 61,
+  },
+  model: 'openai/gpt-4o-mini',
+  input_tokens: 120,
+  output_tokens: 60,
+  total_tokens: 180,
+  processing_ms: 1500,
+  status: 'completed',
+  error_code: null,
+  created_at: '2026-09-10T10:00:00.000Z',
+  completed_at: '2026-09-10T10:00:02.000Z',
+};
+
+/** Fake DB that enforces the ownership predicate like the real query does. */
+function installDetailFakeDb() {
+  const statements: Statement[] = [];
+  const pool = {
+    query: vi.fn(async (text: string, params?: unknown[]) => {
+      statements.push({ text, params });
+      if (text.includes('WHERE id = $1')) {
+        const [id, userId] = params as [string, string];
+        if (id === JOB_ID && userId === USER_ID) {
+          return { rows: [fullJobRow] };
+        }
+        return { rows: [] };
+      }
+      return { rows: [] };
+    }),
+    connect: vi.fn(async () => ({ query: vi.fn(), release: vi.fn() })),
+  } as unknown as Pool;
+  _setPoolForTests(pool);
+  return { statements };
+}
+
+describe('GET /api/v1/writing/jobs/:id', () => {
+  it('returns the full owned job with untruncated text and metrics', async () => {
+    installDetailFakeDb();
+
+    const res = await request(app)
+      .get(`/api/v1/writing/jobs/${JOB_ID}`)
+      .set('Authorization', 'Bearer test-token')
+      .expect(200);
+
+    expect(res.body.job).toMatchObject({
+      id: JOB_ID,
+      input_text: 'The complete original draft text, untruncated.',
+      output_text: 'The complete revised text, untruncated.',
+      status: 'completed',
+      model: 'openai/gpt-4o-mini',
+      input_tokens: 120,
+    });
+    expect(res.body.job.analysis).toMatchObject({ readability: 72, formality: 61 });
+    expect(res.body.job.settings).toEqual({ editorMode: 'plain', preferences: { clarity: 70 } });
+  });
+
+  it('binds both id and owner in a single predicate', async () => {
+    const { statements } = installDetailFakeDb();
+
+    await request(app)
+      .get(`/api/v1/writing/jobs/${JOB_ID}`)
+      .set('Authorization', 'Bearer test-token')
+      .expect(200);
+
+    const lookup = statements.find((s) => s.text.includes('WHERE id = $1'));
+    expect(lookup?.text).toContain('AND user_id = $2');
+    expect(lookup?.params).toEqual([JOB_ID, USER_ID]);
+  });
+
+  it('returns 404 (never 403) for foreign-owned and missing jobs alike', async () => {
+    installDetailFakeDb();
+    verifyAs(OTHER_USER_ID);
+
+    const foreign = await request(app)
+      .get(`/api/v1/writing/jobs/${JOB_ID}`)
+      .set('Authorization', 'Bearer test-token')
+      .expect(404);
+    expect(foreign.body).toEqual({
+      error: { code: 'NOT_FOUND', message: 'The requested resource was not found.' },
+    });
+
+    verifyAs(USER_ID);
+    const missing = await request(app)
+      .get(`/api/v1/writing/jobs/${UNKNOWN_JOB_ID}`)
+      .set('Authorization', 'Bearer test-token')
+      .expect(404);
+    expect(missing.body.error.code).toBe('NOT_FOUND');
+  });
+
+  it('rejects malformed UUIDs with 400 and no stack traces', async () => {
+    installDetailFakeDb();
+
+    const res = await request(app)
+      .get('/api/v1/writing/jobs/not-a-uuid')
+      .set('Authorization', 'Bearer test-token')
+      .expect(400);
+
+    expect(res.body.error.code).toBe('INVALID_INPUT');
+    expect(res.body.error.details).toEqual(
+      expect.arrayContaining([expect.objectContaining({ location: 'params', path: 'id' })]),
+    );
+    expect(JSON.stringify(res.body)).not.toContain('stack');
+  });
+});
