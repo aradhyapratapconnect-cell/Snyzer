@@ -23,5 +23,11 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
+    // jsdom + Tiptap suites are CPU-heavy; unconstrained forks starve each
+    // other on modest machines and produce timing flakes. Two workers plus a
+    // generous timeout keeps the suite deterministic.
+    pool: 'forks',
+    poolOptions: { forks: { maxForks: 2 } },
+    testTimeout: 15000,
   },
 });
