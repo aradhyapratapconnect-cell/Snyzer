@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../../components/ui/button.js';
 import { Input } from '../../components/ui/input.js';
 import { Label } from '../../components/ui/label.js';
@@ -9,14 +9,17 @@ import { Spinner } from '../../components/ui/spinner.js';
 import { getSupabaseClient } from '../../lib/supabase.js';
 import { AuthCard, AuthLink } from './AuthCard.js';
 import { PasswordInput } from './PasswordInput.js';
+import { resolvePostAuthRedirect } from './ProtectedRoute.js';
 import { loginSchema, type LoginFormValues } from './schemas.js';
 
 /**
- * Login form (SNZ-013). Sign-in failures always map to the same generic
- * message so the UI never reveals whether an email is registered.
+ * Login form (SNZ-013; post-auth redirect SNZ-015). Sign-in failures always
+ * map to the same generic message so the UI never reveals whether an email
+ * is registered.
  */
 export function LoginForm() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [serverError, setServerError] = useState<string | null>(null);
   const {
     register,
@@ -38,7 +41,7 @@ export function LoginForm() {
         setServerError('Invalid email or password.');
         return;
       }
-      navigate('/workspace');
+      navigate(resolvePostAuthRedirect(location.state), { replace: true });
     } catch {
       setServerError('Invalid email or password.');
     }

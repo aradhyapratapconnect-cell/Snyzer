@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../../components/ui/button.js';
 import { Input } from '../../components/ui/input.js';
 import { Label } from '../../components/ui/label.js';
@@ -9,6 +9,7 @@ import { Spinner } from '../../components/ui/spinner.js';
 import { getSupabaseClient } from '../../lib/supabase.js';
 import { AuthCard, AuthLink } from './AuthCard.js';
 import { PasswordInput } from './PasswordInput.js';
+import { resolvePostAuthRedirect } from './ProtectedRoute.js';
 import { registerSchema, type RegisterFormValues } from './schemas.js';
 
 /**
@@ -25,6 +26,7 @@ function toFriendlyError(message: string): string {
 
 export function RegisterForm() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [serverError, setServerError] = useState<string | null>(null);
   const {
     register,
@@ -46,7 +48,7 @@ export function RegisterForm() {
         setServerError(toFriendlyError(error.message));
         return;
       }
-      navigate('/workspace');
+      navigate(resolvePostAuthRedirect(location.state), { replace: true });
     } catch {
       setServerError('Something went wrong. Please try again.');
     }

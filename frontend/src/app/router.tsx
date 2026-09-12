@@ -5,6 +5,7 @@ import { LoginPage } from './LoginPage.js';
 import { RegisterPage } from './RegisterPage.js';
 import { ResetPasswordPage } from './ResetPasswordPage.js';
 import { WorkspacePage } from './WorkspacePage.js';
+import { ProtectedRoute } from '../features/auth/ProtectedRoute.js';
 
 /**
  * Placeholder index content until the workspace feature route arrives.
@@ -39,8 +40,8 @@ export function GettingStarted() {
 }
 
 /**
- * Base router (SNZ-003; auth + workspace routes SNZ-013; recovery SNZ-014).
- * Route guards arrive with SNZ-015.
+ * Base router (SNZ-003; auth + workspace routes SNZ-013; recovery SNZ-014;
+ * guards SNZ-015). History/settings routes arrive in later tickets.
  */
 export const router = createBrowserRouter([
   {
@@ -52,7 +53,14 @@ export const router = createBrowserRouter([
       { path: 'register', element: <RegisterPage /> },
       { path: 'forgot-password', element: <ForgotPasswordPage /> },
       { path: 'reset-password', element: <ResetPasswordPage /> },
-      { path: 'workspace', element: <WorkspacePage /> },
+      {
+        path: 'workspace',
+        element: (
+          <ProtectedRoute>
+            <WorkspacePage />
+          </ProtectedRoute>
+        ),
+      },
     ],
   },
 ]);
