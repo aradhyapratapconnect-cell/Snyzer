@@ -11,7 +11,22 @@ if (typeof window !== 'undefined' && typeof window.HTMLElement !== 'undefined') 
   window.HTMLElement.prototype.hasPointerCapture ??= () => false;
   window.HTMLElement.prototype.setPointerCapture ??= () => {};
   window.HTMLElement.prototype.releasePointerCapture ??= () => {};
-  window.HTMLElement.prototype.scrollIntoView ??= () => {};
+  window.HTMLElement.prototype.scrollIntoView ??= () => void 0;
+}
+
+// jsdom lacks layout APIs that ProseMirror calls on selection changes.
+// Zero-size stubs keep the editor testable; real geometry belongs to
+// Playwright (SNZ-058).
+if (typeof window !== 'undefined' && typeof window.Element !== 'undefined') {
+  const emptyRects = (): DOMRectList => [] as unknown as DOMRectList;
+  const zeroRect = (): DOMRect =>
+    ({ x: 0, y: 0, width: 0, height: 0, top: 0, right: 0, bottom: 0, left: 0 }) as DOMRect;
+  window.Element.prototype.getClientRects ??= emptyRects;
+  window.Element.prototype.getBoundingClientRect ??= zeroRect;
+  if (typeof window.Range !== 'undefined') {
+    window.Range.prototype.getClientRects ??= emptyRects;
+    window.Range.prototype.getBoundingClientRect ??= zeroRect;
+  }
 }
 
 // Vitest does not enable `globals`, so Testing Library's auto-cleanup never
