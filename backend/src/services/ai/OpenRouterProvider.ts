@@ -8,6 +8,7 @@ import {
 } from './aiCallWithRetry.js';
 import { AIProviderUnavailableError } from './aiErrors.js';
 import { buildPromptMessages } from './prompts.js';
+import { validateAIRevision } from './aiResponseValidator.js';
 import type { AIWritingRequest, AIWritingResponse, TokenUsage } from './types.js';
 
 /**
@@ -147,24 +148,9 @@ export class OpenRouterProvider implements AIProvider {
     revisedText: string;
     analysis: AIWritingResponse['analysis'];
   } {
-    const content = this.readContent(payload);
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(content);
-    } catch {
-      throw new BadGatewayError('AI provider returned a malformed response.');
-    }
-    if (typeof parsed !== 'object' || parsed === null) {
-      throw new BadGatewayError('AI provider returned a malformed response.');
-    }
-    const { revisedText, analysis } = parsed as {
-      revisedText?: unknown;
-      analysis?: AIWritingResponse['analysis'];
-    };
-    if (typeof revisedText !== 'string' || revisedText === '' || analysis === undefined) {
-      throw new BadGatewayError('AI provider returned a malformed response.');
-    }
-    return { revisedText, analysis };
+    // Structural envelope problems (not model output) stay BadGateway;
+    // model content validation (incl. clamping) lives in the validator.
+    return validateAIRevision(this.readContent(payload));
   }
 
   private readContent(payload: unknown): string {

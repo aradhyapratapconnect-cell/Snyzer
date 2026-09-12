@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BadGatewayError } from '../src/middleware/errorHandler.js';
-import { AIProviderUnavailableError, AITimeoutError } from '../src/services/ai/aiErrors.js';
+import {
+  AIProviderUnavailableError,
+  AIMalformedResponseError,
+  AITimeoutError,
+} from '../src/services/ai/aiErrors.js';
 import {
   DEFAULT_OPENROUTER_MODEL,
   OPENROUTER_API_URL,
@@ -176,17 +180,21 @@ describe('OpenRouterProvider', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   }, 10000);
 
-  it('maps malformed payloads without leaking the key', async () => {
+  it('splits structural and content failures without leaking the key', async () => {
     const provider = new OpenRouterProvider({ apiKey: 'super-secret-key' });
 
+    // Missing envelope structure stays a gateway error.
     fetchMock.mockResolvedValue(okResponse({ choices: [] }));
-    const failure = await provider.generateWritingRevision(request).catch((e: unknown) => e);
-    expect(failure).toBeInstanceOf(BadGatewayError);
+    const structural = await provider.generateWritingRevision(request).catch((e: unknown) => e);
+    expect(structural).toBeInstanceOf(BadGatewayError);
 
+    // Unparseable model content fails fast (no retries) as malformed.
+    fetchMock.mockClear();
     fetchMock.mockResolvedValue(okResponse({ choices: [{ message: { content: 'not json{{{' } }] }));
-    const failure2 = await provider.generateWritingRevision(request).catch((e: unknown) => e);
-    expect(failure2).toBeInstanceOf(BadGatewayError);
-    expect((failure2 as Error).message).not.toContain('super-secret-key');
+    const failure = await provider.generateWritingRevision(request).catch((e: unknown) => e);
+    expect(failure).toBeInstanceOf(AIMalformedResponseError);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect((failure as Error).message).not.toContain('super-secret-key');
   });
 
   it('maps network failures to service errors', async () => {
