@@ -1,16 +1,16 @@
 import type { NextFunction, Request, Response } from 'express';
 import { getSupabaseAdmin } from '../lib/supabase.js';
-import type { ApiErrorEnvelope } from './errorHandler.js';
+import { UnauthorizedError } from './errorHandler.js';
 
 /**
- * Backend authentication middleware (SNZ-012).
+ * Backend authentication middleware (SNZ-012; SNZ-018 envelope).
  *
  * Verifies the Supabase JWT from the `Authorization: Bearer <token>` header
  * against Supabase Auth and attaches the verified identity to `req.user`.
- * Anything missing, malformed, expired, forged, or unverifiable yields the
- * same generic 401 — never a hint about which check failed, and never
- * internal details. Async errors are contained here so they cannot escape
- * as 500s with stack traces.
+ * Anything missing, malformed, expired, forged, or unverifiable forwards the
+ * same generic 401 to the global error middleware — never a hint about which
+ * check failed, and never internal details. Async errors are contained here
+ * so they cannot escape as 500s with stack traces.
  */
 
 declare global {
@@ -29,9 +29,7 @@ export interface AuthContext {
   role: string;
 }
 
-const UNAUTHORIZED: ApiErrorEnvelope = {
-  error: { code: 'UNAUTHORIZED', message: 'Authentication required.' },
-};
+const UNAUTHORIZED = new UnauthorizedError();
 
 /** Extracts the token from `Authorization: Bearer <token>` (scheme case-insensitive). */
 export function extractBearerToken(header: string | undefined): string | null {
@@ -59,16 +57,16 @@ function roleFromClaims(user: {
   return 'FREE_USER';
 }
 
-export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function requireAuth(req: Request, _res: Response, next: NextFunction): Promise<void> {
   try {
     const token = extractBearerToken(req.header('Authorization'));
     if (token === null) {
-      res.status(401).json(UNAUTHORIZED);
+      next(UNAUTHORIZED);
       return;
     }
     const { data, error } = await getSupabaseAdmin().auth.getUser(token);
     if (error !== null || data.user === null) {
-      res.status(401).json(UNAUTHORIZED);
+      next(UNAUTHORIZED);
       return;
     }
     const authUser: AuthContext = { id: data.user.id, role: roleFromClaims(data.user) };
@@ -78,6 +76,6 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     req.user = authUser;
     next();
   } catch {
-    res.status(401).json(UNAUTHORIZED);
+    next(UNAUTHORIZED);
   }
 }

@@ -3,12 +3,15 @@ import express, { type Request, type Response } from 'express';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { WritingJobRequestSchema } from '@snyzer/shared';
+import { errorHandler } from '../src/middleware/errorHandler.js';
 import { validate } from '../src/middleware/validate.js';
 
 /**
- * SNZ-017 integration tests: the validation middleware against real Express
- * routes and the real shared writing schema. Malformed payloads must halt
- * with 400 before the controller; valid ones arrive parsed and stripped.
+ * SNZ-017 integration tests (SNZ-018 envelope): the validation middleware
+ * against real Express routes and the real shared writing schema, with
+ * failures serialized by the real global error middleware. Malformed
+ * payloads must halt with 400 before the controller; valid ones arrive
+ * parsed and stripped.
  */
 const paginationSchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
@@ -31,6 +34,7 @@ function testApp() {
       res.status(200).json({ received: req.params });
     },
   );
+  app.use(errorHandler);
   return app;
 }
 

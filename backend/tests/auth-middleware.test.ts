@@ -1,11 +1,13 @@
 import type { NextFunction, Request, Response } from 'express';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { extractBearerToken, requireAuth } from '../src/middleware/auth.js';
+import { errorHandler } from '../src/middleware/errorHandler.js';
 
 /**
- * SNZ-012 unit tests: `requireAuth` against a mocked Supabase admin client.
- * Covers valid, expired, forged, malformed, and missing credentials plus
- * verification-service failures. No network involved.
+ * SNZ-012 unit tests (SNZ-018 envelope): `requireAuth` against a mocked
+ * Supabase admin client, with forwarded errors serialized by the real global
+ * error middleware. Covers valid, expired, forged, malformed, and missing
+ * credentials plus verification-service failures. No network involved.
  */
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
@@ -44,7 +46,23 @@ function mockResponse(): MockResponse {
   };
 }
 
-const next: NextFunction = () => {};
+/**
+ * Runs `requireAuth` the way Express does: forwarded errors go through the
+ * real global error middleware. Returns whether `next()` was reached
+ * without an error (i.e. authentication succeeded).
+ */
+async function runRequireAuth(req: Request, res: MockResponse): Promise<boolean> {
+  let succeeded = false;
+  const next: NextFunction = (err?: unknown) => {
+    if (err !== undefined) {
+      errorHandler(err, req, res as unknown as Response, () => {});
+    } else {
+      succeeded = true;
+    }
+  };
+  await requireAuth(req, res as unknown as Response, next);
+  return succeeded;
+}
 
 function verifiedUser(overrides: Record<string, unknown> = {}) {
   return {
@@ -84,10 +102,11 @@ describe('requireAuth', () => {
     const req = mockRequest('Bearer valid.token.here');
     const res = mockResponse();
 
-    await requireAuth(req, res as unknown as Response, next);
+    const succeeded = await runRequireAuth(req, res);
 
     expect(mocks.getUser).toHaveBeenCalledWith('valid.token.here');
     expect(req.user).toEqual({ id: 'user-1', email: 'ada@example.com', role: 'FREE_USER' });
+    expect(succeeded).toBe(true);
     expect(res.statusCode).toBe(0);
   });
 
@@ -98,7 +117,7 @@ describe('requireAuth', () => {
     });
     const req = mockRequest('Bearer valid.token.here');
 
-    await requireAuth(req, mockResponse() as unknown as Response, next);
+    await runRequireAuth(req, mockResponse());
 
     expect(req.user?.role).toBe('ADMIN');
   });
@@ -106,9 +125,10 @@ describe('requireAuth', () => {
   it('returns 401 without calling next() when the header is missing', async () => {
     const res = mockResponse();
 
-    await requireAuth(mockRequest(undefined), res as unknown as Response, next);
+    const succeeded = await runRequireAuth(mockRequest(undefined), res);
 
     expect(mocks.getUser).not.toHaveBeenCalled();
+    expect(succeeded).toBe(false);
     expect(res.statusCode).toBe(401);
     expect(res.body).toEqual({
       error: { code: 'UNAUTHORIZED', message: 'Authentication required.' },
@@ -118,7 +138,8 @@ describe('requireAuth', () => {
   it('returns 401 for malformed authorization headers', async () => {
     for (const header of ['Token abc', 'Bearer', '']) {
       const res = mockResponse();
-      await requireAuth(mockRequest(header), res as unknown as Response, next);
+      const succeeded = await runRequireAuth(mockRequest(header), res);
+      expect(succeeded).toBe(false);
       expect(res.statusCode).toBe(401);
       expect(res.body).toEqual({
         error: { code: 'UNAUTHORIZED', message: 'Authentication required.' },
@@ -135,7 +156,7 @@ describe('requireAuth', () => {
     const req = mockRequest('Bearer forged.token.here');
     const res = mockResponse();
 
-    await requireAuth(req, res as unknown as Response, next);
+    await runRequireAuth(req, res);
 
     expect(res.statusCode).toBe(401);
     expect(res.body).toEqual({
@@ -146,12 +167,11 @@ describe('requireAuth', () => {
 
   it('returns generic 401 (never internals) when verification itself fails', async () => {
     mocks.getUser.mockRejectedValue(new Error('fetch failed to https://example.supabase.co'));
-    const nextFn = vi.fn();
     const res = mockResponse();
 
-    await requireAuth(mockRequest('Bearer valid.token.here'), res as unknown as Response, nextFn);
+    const succeeded = await runRequireAuth(mockRequest('Bearer valid.token.here'), res);
 
-    expect(nextFn).not.toHaveBeenCalled();
+    expect(succeeded).toBe(false);
     expect(res.statusCode).toBe(401);
     expect(JSON.stringify(res.body)).not.toContain('supabase.co');
     expect(res.body).toEqual({

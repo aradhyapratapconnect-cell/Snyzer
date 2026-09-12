@@ -1,15 +1,17 @@
 import type { NextFunction, Request, Response } from 'express';
 import { z } from 'zod';
+import { ValidationError } from './errorHandler.js';
 
 /**
- * Request validation middleware factory (SNZ-017).
+ * Request validation middleware factory (SNZ-017; SNZ-018 envelope).
  *
  * Validates `body`, `query`, and/or `params` against Zod schemas at the
  * network edge so malformed payloads never reach controllers. On success the
  * parsed value replaces the original — applying defaults and coercions while
- * stripping undeclared properties (Zod's default behavior). On failure the
- * request halts with a 400 envelope whose `details` carry only
- * location/path/message triples: no values, paths, or stack traces.
+ * stripping undeclared properties (Zod's default behavior). On failure an
+ * `INVALID_INPUT` error is forwarded to the global error middleware, which
+ * owns the response envelope; `details` carry only location/path/message
+ * triples: no values, paths, or stack traces.
  */
 export interface ValidationSchemas {
   body?: z.ZodTypeAny;
@@ -70,9 +72,7 @@ export function validate(schemas: ValidationSchemas) {
     }
 
     if (details.length > 0) {
-      res.status(400).json({
-        error: { code: 'INVALID_INPUT', message: 'Validation error', details },
-      });
+      next(new ValidationError('Validation error', details));
       return;
     }
     next();
