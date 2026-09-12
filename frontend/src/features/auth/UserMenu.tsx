@@ -90,6 +90,16 @@ export function UserMenu() {
           <p className="truncate px-3 py-2 text-xs text-subink-light dark:text-subink-dark">
             {user?.email ?? 'Signed in'}
           </p>
+          <Link
+            to="/settings"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+            }}
+            className="block rounded-lg px-3 py-2 text-sm text-ink-light hover:bg-muted-light dark:text-ink-dark dark:hover:bg-muted-dark"
+          >
+            Settings
+          </Link>
           <button
             type="button"
             role="menuitem"
