@@ -9,11 +9,15 @@ export const MOBILE_MAX_WIDTH = 767;
 
 export function useIsMobile(breakpoint: number = MOBILE_MAX_WIDTH): boolean {
   const query = `(max-width: ${breakpoint}px)`;
+  const canMatchMedia = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
   const [isMobile, setIsMobile] = useState(() =>
-    typeof window === 'undefined' ? false : window.matchMedia(query).matches,
+    canMatchMedia ? window.matchMedia(query).matches : false,
   );
 
   useEffect(() => {
+    if (!canMatchMedia) {
+      return;
+    }
     const media = window.matchMedia(query);
     const onChange = () => {
       setIsMobile(media.matches);
@@ -23,7 +27,7 @@ export function useIsMobile(breakpoint: number = MOBILE_MAX_WIDTH): boolean {
     return () => {
       media.removeEventListener('change', onChange);
     };
-  }, [query]);
+  }, [query, canMatchMedia]);
 
   return isMobile;
 }

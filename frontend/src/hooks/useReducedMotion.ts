@@ -7,11 +7,15 @@ import { useEffect, useState } from 'react';
  */
 export function useReducedMotion(): boolean {
   const query = '(prefers-reduced-motion: reduce)';
+  const canMatchMedia = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
   const [reduced, setReduced] = useState(() =>
-    typeof window === 'undefined' ? false : window.matchMedia(query).matches,
+    canMatchMedia ? window.matchMedia(query).matches : false,
   );
 
   useEffect(() => {
+    if (!canMatchMedia) {
+      return;
+    }
     const media = window.matchMedia(query);
     const onChange = () => {
       setReduced(media.matches);
@@ -21,7 +25,7 @@ export function useReducedMotion(): boolean {
     return () => {
       media.removeEventListener('change', onChange);
     };
-  }, [query]);
+  }, [query, canMatchMedia]);
 
   return reduced;
 }
