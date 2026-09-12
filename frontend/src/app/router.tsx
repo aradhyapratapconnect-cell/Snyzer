@@ -1,6 +1,7 @@
 import { createBrowserRouter, Link } from 'react-router-dom';
 import { App } from './App.js';
 import { ForgotPasswordPage } from './ForgotPasswordPage.js';
+import { HistoryPage } from './history/page.js';
 import { LoginPage } from './LoginPage.js';
 import { RegisterPage } from './RegisterPage.js';
 import { ResetPasswordPage } from './ResetPasswordPage.js';
@@ -42,7 +43,7 @@ export function GettingStarted() {
 
 /**
  * Base router (SNZ-003; auth + workspace routes SNZ-013; recovery SNZ-014;
- * guards SNZ-015; settings SNZ-034). History routes arrive in later tickets.
+ * guards SNZ-015; settings SNZ-034; history SNZ-050).
  */
 export const router = createBrowserRouter([
   {
@@ -67,6 +68,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <SettingsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'history',
+        element: (
+          <ProtectedRoute>
+            <HistoryPage />
           </ProtectedRoute>
         ),
       },
