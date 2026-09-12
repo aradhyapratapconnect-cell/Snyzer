@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { HistoryCard, type HistoryJobSummary } from '../../components/history/HistoryCard.js';
+import { HistoryDetailModal } from '../../components/history/HistoryDetailModal.js';
 import { Button } from '../../components/ui/button.js';
 import { Skeleton } from '../../components/ui/skeleton.js';
 import { apiRequest } from '../../lib/apiClient.js';
 
 /**
- * Writing history page (SNZ-050).
+ * Writing history page (SNZ-050 list; SNZ-051 detail dialog).
  *
  * Paginated past jobs with loading skeletons, an empty state, and a detail
- * trigger per card (dialog arrives in SNZ-051). Failures show a retryable
- * error state instead of a blank list.
+ * dialog per card. Deletions update the list in place (filter + count
+ * decrement) without a refetch.
  */
 const PAGE_SIZE = 20;
 
@@ -21,12 +22,13 @@ interface HistoryResponse {
   offset: number;
 }
 
-export function HistoryPage({ onSelectJob }: { onSelectJob?: (id: string) => void }) {
+export function HistoryPage() {
   const [jobs, setJobs] = useState<HistoryJobSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const load = useCallback(async (nextOffset: number) => {
     setStatus('loading');
@@ -107,7 +109,7 @@ export function HistoryPage({ onSelectJob }: { onSelectJob?: (id: string) => voi
                 <HistoryCard
                   job={job}
                   onSelect={(id) => {
-                    onSelectJob?.(id);
+                    setSelectedId(id);
                   }}
                 />
               </li>
@@ -138,6 +140,17 @@ export function HistoryPage({ onSelectJob }: { onSelectJob?: (id: string) => voi
           </div>
         </>
       )}
+
+      <HistoryDetailModal
+        jobId={selectedId}
+        onClose={() => {
+          setSelectedId(null);
+        }}
+        onDeleted={(id) => {
+          setJobs((previous) => previous.filter((job) => job.id !== id));
+          setTotal((previous) => Math.max(0, previous - 1));
+        }}
+      />
     </div>
   );
 }
