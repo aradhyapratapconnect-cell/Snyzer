@@ -1,15 +1,17 @@
 import express, { type Express } from 'express';
-import helmet from 'helmet';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { createApiLimiter } from './middleware/rateLimiter.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
+import { corsMiddleware } from './security/cors.js';
+import { securityHeaders } from './security/headers.js';
 import { healthRouter } from './routes/health.js';
 import { accountRouter } from './routes/account.js';
 import { preferencesRouter } from './routes/preferences.js';
 import { writingRouter } from './routes/writing.js';
 
 /**
- * Backend Express application factory (SNZ-002; rate limiting SNZ-052).
+ * Backend Express application factory (SNZ-002; rate limiting SNZ-052;
+ * headers + CORS SNZ-053).
  *
  * Returns a fresh app instance so integration tests can exercise routes via
  * supertest without binding a network port.
@@ -20,8 +22,9 @@ export function createApp(): Express {
   const app = express();
 
   app.disable('x-powered-by');
-  app.use(helmet());
+  app.use(securityHeaders());
   app.use(requestIdMiddleware);
+  app.use(corsMiddleware());
   // 1mb comfortably fits large writing payloads (default max text is ~10k
   // chars); server-side text-length enforcement arrives in SNZ-004/SNZ-017.
   app.use(express.json({ limit: JSON_BODY_LIMIT }));
