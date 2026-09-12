@@ -1,6 +1,12 @@
-import { BadGatewayError, ServiceUnavailableError } from '../../middleware/errorHandler.js';
 import { getBackendEnv } from '../../config/env.js';
+import { BadGatewayError } from '../../middleware/errorHandler.js';
 import type { AIProvider } from './AIProvider.js';
+import {
+  DEFAULT_AI_MAX_RETRIES,
+  DEFAULT_AI_TIMEOUT_MS,
+  aiCallWithRetry,
+} from './aiCallWithRetry.js';
+import { AIProviderUnavailableError } from './aiErrors.js';
 import { buildPromptMessages } from './prompts.js';
 import type { AIWritingRequest, AIWritingResponse, TokenUsage } from './types.js';
 
@@ -11,8 +17,8 @@ import type { AIWritingRequest, AIWritingResponse, TokenUsage } from './types.js
  * explicit options, never the browser) into the `Authorization` header.
  * Model selection is a constructor option so deployments are never pinned to
  * one model; the default is a documented starting point, not a guarantee.
- * Prompts come from `prompts.ts`; resilience (timeouts/retries) and strict
- * output validation arrive in SNZ-024/025.
+ * Prompts come from `prompts.ts`; calls run through the SNZ-024
+ * timeout/retry wrapper; strict output validation arrives in SNZ-025.
  */
 export const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
@@ -24,6 +30,12 @@ export interface OpenRouterOptions {
   model?: string;
   siteUrl?: string;
   appName?: string;
+  /** Timeout/retry tuning; defaults suit production (SNZ-024). */
+  resilience?: {
+    timeoutMs?: number;
+    maxRetries?: number;
+    backoffBaseMs?: number;
+  };
 }
 
 interface OpenRouterMessage {
@@ -47,6 +59,7 @@ export class OpenRouterProvider implements AIProvider {
   private readonly model: string;
   private readonly siteUrl?: string;
   private readonly appName?: string;
+  private readonly resilience: { timeoutMs?: number; maxRetries?: number; backoffBaseMs?: number };
 
   constructor(options: OpenRouterOptions) {
     if (options.apiKey === '') {
@@ -56,6 +69,7 @@ export class OpenRouterProvider implements AIProvider {
     this.model = options.model ?? DEFAULT_OPENROUTER_MODEL;
     this.siteUrl = options.siteUrl;
     this.appName = options.appName;
+    this.resilience = options.resilience ?? {};
   }
 
   /** Prompt payload built from the engineered templates in `prompts.ts`. */
@@ -69,32 +83,42 @@ export class OpenRouterProvider implements AIProvider {
 
   async generateWritingRevision(request: AIWritingRequest): Promise<AIWritingResponse> {
     const started = Date.now();
-    let response: Response;
-    try {
-      response = await fetch(OPENROUTER_API_URL, {
-        method: 'POST',
-        headers: this.buildHeaders(),
-        body: JSON.stringify({
-          model: this.model,
-          messages: this.buildMessages(request),
-          temperature: 0.3,
-          max_tokens: 4000,
-          response_format: { type: 'json_object' },
-        }),
-      });
-    } catch {
-      throw new ServiceUnavailableError('AI provider is unreachable. Please try again later.');
-    }
-
-    if (response.status === 429) {
-      throw new ServiceUnavailableError('AI provider is rate limited. Please try again later.');
-    }
-    if (response.status === 502 || response.status === 503 || response.status === 504) {
-      throw new ServiceUnavailableError('AI provider is unavailable. Please try again later.');
-    }
-    if (!response.ok) {
-      throw new BadGatewayError('AI provider returned an unexpected error.');
-    }
+    const response = await aiCallWithRetry(
+      async (signal) => {
+        let res: Response;
+        try {
+          res = await fetch(OPENROUTER_API_URL, {
+            method: 'POST',
+            headers: this.buildHeaders(),
+            body: JSON.stringify({
+              model: this.model,
+              messages: this.buildMessages(request),
+              temperature: 0.3,
+              max_tokens: 4000,
+              response_format: { type: 'json_object' },
+            }),
+            signal,
+          });
+        } catch (error) {
+          if (error instanceof DOMException && error.name === 'AbortError') {
+            throw error;
+          }
+          throw new AIProviderUnavailableError(
+            'AI provider is unreachable. Please try again later.',
+          );
+        }
+        if (res.status === 429 || res.status === 502 || res.status === 503 || res.status === 504) {
+          throw new AIProviderUnavailableError(
+            'AI provider is unavailable. Please try again later.',
+          );
+        }
+        if (!res.ok) {
+          throw new BadGatewayError('AI provider returned an unexpected error.');
+        }
+        return res;
+      },
+      { timeoutMs: DEFAULT_AI_TIMEOUT_MS, maxRetries: DEFAULT_AI_MAX_RETRIES, ...this.resilience },
+    );
 
     const payload: unknown = await response.json();
     return {

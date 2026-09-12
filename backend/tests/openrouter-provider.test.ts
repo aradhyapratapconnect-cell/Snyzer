@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { BadGatewayError, ServiceUnavailableError } from '../src/middleware/errorHandler.js';
+import { BadGatewayError } from '../src/middleware/errorHandler.js';
+import { AIProviderUnavailableError, AITimeoutError } from '../src/services/ai/aiErrors.js';
 import {
   DEFAULT_OPENROUTER_MODEL,
   OPENROUTER_API_URL,
@@ -121,19 +122,59 @@ describe('OpenRouterProvider', () => {
     expect(result.usage).toEqual({ inputTokens: 0, outputTokens: 0, totalTokens: 0 });
   });
 
-  it('maps rate limits and gateway errors to service errors', async () => {
-    const provider = new OpenRouterProvider({ apiKey: 'test-key' });
+  it('maps rate limits and gateway errors to retryable service errors', async () => {
+    const provider = new OpenRouterProvider({
+      apiKey: 'test-key',
+      resilience: { backoffBaseMs: 1 },
+    });
 
     fetchMock.mockResolvedValue(new Response('slow down', { status: 429 }));
-    await expect(provider.generateWritingRevision(request)).rejects.toBeInstanceOf(
-      ServiceUnavailableError,
-    );
+    const rateLimited = await provider.generateWritingRevision(request).catch((e: unknown) => e);
+    expect(rateLimited).toBeInstanceOf(AIProviderUnavailableError);
+    // Initial attempt + 2 bounded retries, then give up.
+    expect(fetchMock).toHaveBeenCalledTimes(3);
 
+    fetchMock.mockClear();
     fetchMock.mockResolvedValue(new Response('bad gateway', { status: 502 }));
     await expect(provider.generateWritingRevision(request)).rejects.toBeInstanceOf(
-      ServiceUnavailableError,
+      AIProviderUnavailableError,
     );
   });
+
+  it('recovers when a transient failure clears on retry', async () => {
+    const provider = new OpenRouterProvider({
+      apiKey: 'test-key',
+      resilience: { backoffBaseMs: 1 },
+    });
+    fetchMock
+      .mockResolvedValueOnce(new Response('try again', { status: 503 }))
+      .mockResolvedValueOnce(okResponse(okPayload()));
+
+    const result = await provider.generateWritingRevision(request);
+
+    expect(result.revisedText).toBe('Clear writing triumphs.');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('aborts hung requests and surfaces a timeout error', async () => {
+    const provider = new OpenRouterProvider({
+      apiKey: 'test-key',
+      resilience: { timeoutMs: 20, backoffBaseMs: 1 },
+    });
+    fetchMock.mockImplementation(
+      (_url: unknown, init?: { signal?: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => {
+            reject(new DOMException('aborted', 'AbortError'));
+          });
+        }),
+    );
+
+    const failure = await provider.generateWritingRevision(request).catch((e: unknown) => e);
+
+    expect(failure).toBeInstanceOf(AITimeoutError);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  }, 10000);
 
   it('maps malformed payloads without leaking the key', async () => {
     const provider = new OpenRouterProvider({ apiKey: 'super-secret-key' });
@@ -150,10 +191,13 @@ describe('OpenRouterProvider', () => {
 
   it('maps network failures to service errors', async () => {
     fetchMock.mockRejectedValue(new TypeError('fetch failed'));
-    const provider = new OpenRouterProvider({ apiKey: 'test-key' });
+    const provider = new OpenRouterProvider({
+      apiKey: 'test-key',
+      resilience: { backoffBaseMs: 1 },
+    });
 
     await expect(provider.generateWritingRevision(request)).rejects.toBeInstanceOf(
-      ServiceUnavailableError,
+      AIProviderUnavailableError,
     );
   });
 });
