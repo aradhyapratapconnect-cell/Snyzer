@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.tests.json",
     "lint": "eslint src tests --max-warnings=0",
     "test": "vitest run",
+    "coverage": "vitest run --coverage",
     "start": "node dist/server.js",
     "db:migrate": "tsc -p tsconfig.json && node dist/scripts/migrate.js",
     "security:audit": "tsc -p tsconfig.json && node dist/scripts/security-audit.js"

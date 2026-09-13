@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.tests.json",
     "lint": "eslint src tests --max-warnings=0",
     "test": "vitest run",
+    "coverage": "vitest run --coverage",
     "dev": "vite",
     "preview": "vite preview"
   },
