@@ -36,13 +36,20 @@ function absentClause(sql: string, clause: string): void {
 }
 
 describe('rls migration structure', () => {
-  it('exists with a timestamped version ordered last', async () => {
+  it('exists with a timestamped version ordered after the core tables', async () => {
     const { version } = await rlsSql();
 
     expect(version).toMatch(/^\d+_rls_policies\.sql$/);
     const discovered = await discoverMigrations(MIGRATIONS_DIR);
     const versions = discovered.map((m) => m.version);
-    expect(versions[versions.length - 1]).toBe(version);
+    const rlsIndex = versions.indexOf(version);
+    // The baseline RLS file must run after every table it governs; later
+    // features (e.g. user_presets, SNZ-062) ship their own table+RLS
+    // migration afterwards, so "last overall" no longer holds.
+    for (const table of ['profiles', 'user_preferences', 'writing_jobs', 'usage_events']) {
+      const tableIndex = versions.findIndex((v) => v.includes(table));
+      expect(rlsIndex).toBeGreaterThan(tableIndex);
+    }
   });
 
   it('explicitly enables RLS on every core table (never FORCE)', async () => {
