@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '../../components/ui/button.js';
+import { ExportButton } from '../../components/editor/ExportButton.js';
 import { toast } from '../../components/ui/toaster.js';
 import { useWorkspaceStore } from '../../stores/useWorkspaceStore.js';
 
@@ -42,6 +43,9 @@ export function ResultDisplay() {
   const currentResult = useWorkspaceStore((state) => state.currentResult);
   const streamingText = useWorkspaceStore((state) => state.streamingText);
   const isProcessing = useWorkspaceStore((state) => state.isProcessing);
+  const inputText = useWorkspaceStore((state) => state.inputText);
+  const selectedMode = useWorkspaceStore((state) => state.selectedMode);
+  const selectedTone = useWorkspaceStore((state) => state.selectedTone);
   const setInputText = useWorkspaceStore((state) => state.setInputText);
   const submitWritingJob = useWorkspaceStore((state) => state.submitWritingJob);
   const [copied, setCopied] = useState(false);
@@ -67,9 +71,12 @@ export function ResultDisplay() {
 
   if (currentResult === null) {
     return (
-      <p className="text-sm text-subink-light dark:text-subink-dark">
-        Your improved text will appear here.
-      </p>
+      <div className="space-y-3">
+        <p className="text-sm text-subink-light dark:text-subink-dark">
+          Your improved text will appear here.
+        </p>
+        <ExportButton draft={inputText} revision={null} mode={selectedMode} tone={selectedTone} />
+      </div>
     );
   }
 
@@ -93,6 +100,12 @@ export function ResultDisplay() {
         <Button type="button" size="sm" variant="secondary" onClick={() => void handleCopy()}>
           {copied ? 'Copied ✓' : 'Copy'}
         </Button>
+        <ExportButton
+          draft={inputText}
+          revision={currentResult.outputText}
+          mode={selectedMode}
+          tone={selectedTone}
+        />
         <Button
           type="button"
           size="sm"
