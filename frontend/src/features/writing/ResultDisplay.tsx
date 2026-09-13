@@ -4,12 +4,16 @@ import { toast } from '../../components/ui/toaster.js';
 import { useWorkspaceStore } from '../../stores/useWorkspaceStore.js';
 
 /**
- * Revision result display (SNZ-047).
+ * Revision result display (SNZ-047; streaming preview SNZ-061).
  *
  * Shows the latest AI revision with Copy (clipboard + toast), Use as input
  * (loads the revision back into the editor for iteration), and Rerun
  * (dispatches a fresh job). Empty state before the first run; clipboard
  * failures fall back to a manual-copy prompt instead of failing silently.
+ *
+ * While a stream is open (`streamingText`), a live preview renders the
+ * tokens so far with a polite live region — the validated result replaces it
+ * on completion.
  */
 async function writeToClipboard(text: string): Promise<boolean> {
   try {
@@ -36,10 +40,30 @@ async function writeToClipboard(text: string): Promise<boolean> {
 
 export function ResultDisplay() {
   const currentResult = useWorkspaceStore((state) => state.currentResult);
+  const streamingText = useWorkspaceStore((state) => state.streamingText);
   const isProcessing = useWorkspaceStore((state) => state.isProcessing);
   const setInputText = useWorkspaceStore((state) => state.setInputText);
   const submitWritingJob = useWorkspaceStore((state) => state.submitWritingJob);
   const [copied, setCopied] = useState(false);
+
+  if (streamingText !== null) {
+    return (
+      <div className="space-y-3" aria-live="polite" aria-label="Generating revision">
+        <p className="text-xs font-medium tracking-wide text-subink-light uppercase dark:text-subink-dark">
+          Generating…
+        </p>
+        <div className="min-h-24 text-sm leading-relaxed whitespace-pre-wrap">
+          {streamingText === '' ? (
+            <span className="text-subink-light dark:text-subink-dark">
+              The first words are on their way.
+            </span>
+          ) : (
+            streamingText
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (currentResult === null) {
     return (

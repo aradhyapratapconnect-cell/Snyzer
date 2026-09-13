@@ -11,6 +11,7 @@ import { ResultDisplay } from '../features/writing/ResultDisplay.js';
 import { WorkspaceErrorOverlay } from '../features/writing/WorkspaceErrorOverlay.js';
 import { WorkspaceLayout } from '../features/writing/WorkspaceLayout.js';
 import { WritingControls } from '../features/writing/WritingControls.js';
+import { useStreamingRevision } from '../hooks/useStreamingRevision.js';
 import { usePreferencesStore } from '../stores/usePreferencesStore.js';
 import { useWorkspaceStore } from '../stores/useWorkspaceStore.js';
 
@@ -36,6 +37,11 @@ export function WorkspacePage() {
   const setControls = useWorkspaceStore((state) => state.setControls);
   const applyDefaultTone = useWorkspaceStore((state) => state.applyDefaultTone);
   const submitWritingJob = useWorkspaceStore((state) => state.submitWritingJob);
+  const beginStream = useWorkspaceStore((state) => state.beginStream);
+  const appendStreamText = useWorkspaceStore((state) => state.appendStreamText);
+  const finishStream = useWorkspaceStore((state) => state.finishStream);
+  const failStream = useWorkspaceStore((state) => state.failStream);
+  const cancelStream = useWorkspaceStore((state) => state.cancelStream);
   const loadPreferences = usePreferencesStore((state) => state.loadPreferences);
   const persistEditorMode = usePreferencesStore((state) => state.updatePreferences);
 
@@ -64,6 +70,32 @@ export function WorkspacePage() {
 
   const submittable =
     inputText.trim() !== '' && inputText.length <= MAX_INPUT_TEXT_LENGTH && !isProcessing;
+
+  // Live revisions first: the hook streams tokens progressively and drops to
+  // the synchronous endpoint wherever SSE cannot connect.
+  const streaming = useStreamingRevision({
+    onToken: appendStreamText,
+    onDone: finishStream,
+    onError: failStream,
+    fallback: () => {
+      cancelStream();
+      return submitWritingJob();
+    },
+  });
+
+  const handleImprove = () => {
+    if (!submittable) {
+      return;
+    }
+    beginStream();
+    void streaming.submit({
+      inputText,
+      mode: selectedMode,
+      tone: selectedTone,
+      editorMode,
+      preferences: targets,
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -96,11 +128,7 @@ export function WorkspacePage() {
               }
               disabled={isProcessing}
             />
-            <ImproveButton
-              disabled={!submittable}
-              loading={isProcessing}
-              onClick={() => void submitWritingJob()}
-            />
+            <ImproveButton disabled={!submittable} loading={isProcessing} onClick={handleImprove} />
             {activeError !== null && (
               <WorkspaceErrorOverlay
                 error={activeError}

@@ -120,4 +120,51 @@ describe('WorkspacePage', () => {
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     expect(screen.getByLabelText('Your draft')).toHaveValue('Keep this draft.');
   });
+
+  it('streams the revision progressively when SSE connects', async () => {
+    const user = userEvent.setup();
+    // Manually-pumped stream: proves the progressive preview renders before
+    // the validated job lands.
+    let controller!: ReadableStreamDefaultController<Uint8Array>;
+    const encoder = new TextEncoder();
+    const body = new ReadableStream<Uint8Array>({
+      start(c) {
+        controller = c;
+      },
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Promise.resolve(
+          new Response(body, {
+            status: 200,
+            headers: { 'Content-Type': 'text/event-stream' },
+          }),
+        ),
+      ),
+    );
+    try {
+      render(<WorkspacePage />);
+
+      await user.type(screen.getByLabelText('Your draft'), 'Clear writing wins.');
+      await user.click(screen.getByRole('button', { name: 'Improve writing' }));
+
+      expect(await screen.findByText('Generating…')).toBeInTheDocument();
+      controller.enqueue(encoder.encode('event: token\ndata: {"text":"Partial-"}\n\n'));
+      expect(await screen.findByText('Partial-')).toBeInTheDocument();
+      controller.enqueue(
+        encoder.encode(`event: done\ndata: ${JSON.stringify({ job: jobResponse.job })}\n\n`),
+      );
+      controller.close();
+      expect(await screen.findByText('Clear writing triumphs.')).toBeInTheDocument();
+      // The synchronous endpoint stays untouched on the streaming path.
+      expect(
+        apiRequestMock.mock.calls.some(
+          ([path, options]) => path === '/writing/jobs' && options?.method === 'POST',
+        ),
+      ).toBe(false);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });

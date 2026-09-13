@@ -7,7 +7,7 @@ import {
   HistoryQuerySchema,
   JobIdParamsSchema,
 } from '../controllers/historyController.js';
-import { createWritingJob } from '../controllers/writingController.js';
+import { createWritingJob, createWritingJobStream } from '../controllers/writingController.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { requireAuth } from '../middleware/auth.js';
 import { createWritingJobsLimiter } from '../middleware/rateLimiter.js';
@@ -15,7 +15,7 @@ import { validate } from '../middleware/validate.js';
 
 /**
  * Writing routes (SNZ-026 creation, SNZ-027 list, SNZ-028 detail, SNZ-029
- * delete; creation throttled SNZ-052).
+ * delete; creation throttled SNZ-052; streaming SNZ-061).
  */
 export const writingRouter = Router();
 
@@ -28,6 +28,14 @@ writingRouter.post(
   writingJobsLimiter,
   validate({ body: WritingJobRequestSchema }),
   asyncHandler(createWritingJob),
+);
+
+writingRouter.post(
+  '/writing/jobs/stream',
+  requireAuth,
+  writingJobsLimiter,
+  validate({ body: WritingJobRequestSchema }),
+  asyncHandler(createWritingJobStream),
 );
 
 writingRouter.get(

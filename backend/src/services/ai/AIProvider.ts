@@ -1,4 +1,4 @@
-import type { AIWritingRequest, AIWritingResponse } from './types.js';
+import type { AIWritingRequest, AIWritingResponse, StreamSummary, StreamToken } from './types.js';
 
 /**
  * AI provider abstraction (SNZ-021).
@@ -21,4 +21,14 @@ export interface AIProvider {
 
   /** Generates a revised text plus quality analysis for the request. */
   generateWritingRevision(request: AIWritingRequest): Promise<AIWritingResponse>;
+
+  /**
+   * Streams a revision (SNZ-061). Yields displayable text deltas as the model
+   * produces them and resolves with run metadata on completion. Optional so
+   * providers without streaming stay valid — services fall back to the
+   * synchronous call and emit the full text as a single token.
+   */
+  streamWritingRevision?(
+    request: AIWritingRequest,
+  ): AsyncGenerator<StreamToken, StreamSummary, void>;
 }

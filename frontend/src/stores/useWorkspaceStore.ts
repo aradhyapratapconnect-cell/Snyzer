@@ -6,7 +6,7 @@ import { useAnnouncerStore } from '../hooks/useAnnouncer.js';
 import { usePreferencesStore } from './usePreferencesStore.js';
 
 /**
- * Workspace transient state (SNZ-046).
+ * Workspace transient state (SNZ-046; streaming SNZ-061).
  *
  * Holds the draft, controls, in-flight job, latest result, and error for the
  * writing workspace. Server history stays server-side; this store never
@@ -14,6 +14,11 @@ import { usePreferencesStore } from './usePreferencesStore.js';
  * draft on every failure path, and announces lifecycle transitions for
  * screen readers (SNZ-040). Preference persistence for editor mode lives
  * with the mode toggle container, not here.
+ *
+ * Streaming revisions (SNZ-061) reuse the same fields plus `streamingText`:
+ * tokens append there while the stream is open, then `finishStream` promotes
+ * the validated job into `currentResult`. The draft is preserved on every
+ * streaming failure exactly like the sync path.
  */
 export interface WorkspaceResult {
   outputText: string;
@@ -44,6 +49,8 @@ interface WorkspaceState {
   isProcessing: boolean;
   currentResult: WorkspaceResult | null;
   activeError: WorkspaceError | null;
+  /** Progressive revision text while a stream is open; null when idle. */
+  streamingText: string | null;
   setInputText: (inputText: string) => void;
   setEditorMode: (editorMode: EditorMode) => void;
   setControls: (controls: {
@@ -53,6 +60,11 @@ interface WorkspaceState {
   }) => void;
   applyDefaultTone: () => void;
   submitWritingJob: () => Promise<void>;
+  beginStream: () => void;
+  appendStreamText: (delta: string) => void;
+  finishStream: (result: WorkspaceResult) => void;
+  failStream: (failure: WorkspaceError) => void;
+  cancelStream: () => void;
   resetWorkspace: () => void;
   clearError: () => void;
 }
@@ -73,6 +85,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
   isProcessing: false,
   currentResult: null,
   activeError: null,
+  streamingText: null,
   setInputText: (inputText: string) => {
     set({ inputText });
   },
@@ -108,7 +121,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
       });
       return;
     }
-    set({ isProcessing: true, activeError: null });
+    set({ isProcessing: true, activeError: null, streamingText: null });
     useAnnouncerStore.getState().announce('Improving text, please wait.');
     try {
       const response = await apiRequest<WritingJobResponse>('/writing/jobs', {
@@ -138,9 +151,37 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
     }
   },
   resetWorkspace: () => {
-    set({ inputText: '', currentResult: null, activeError: null, isProcessing: false });
+    set({
+      inputText: '',
+      currentResult: null,
+      activeError: null,
+      isProcessing: false,
+      streamingText: null,
+    });
   },
   clearError: () => {
     set({ activeError: null });
+  },
+  beginStream: () => {
+    set({ isProcessing: true, activeError: null, streamingText: '' });
+    useAnnouncerStore.getState().announce('Improving text, please wait.');
+  },
+  appendStreamText: (delta: string) => {
+    set((state) => ({ streamingText: `${state.streamingText ?? ''}${delta}` }));
+  },
+  finishStream: (result: WorkspaceResult) => {
+    set({ streamingText: null, currentResult: result, isProcessing: false });
+    useAnnouncerStore.getState().announce('Revision complete. Results updated.');
+  },
+  failStream: (failure: WorkspaceError) => {
+    // The draft is deliberately untouched: inputText is never cleared here.
+    set({ streamingText: null, activeError: failure, isProcessing: false });
+    useAnnouncerStore.getState().announce('Revision failed. Your text was preserved.', 'assertive');
+  },
+  cancelStream: () => {
+    // Hands control back to the synchronous path (SNZ-061 fallback):
+    // clears the in-flight stream markers so `submitWritingJob` does not see
+    // a stale `isProcessing` guard and refuse to run.
+    set({ streamingText: null, isProcessing: false });
   },
 }));

@@ -35,3 +35,22 @@ export interface AIWritingResponse {
   processingMs: number;
   model: string;
 }
+
+/** One displayable delta from a streaming revision (SNZ-061). */
+export interface StreamToken {
+  /** Clean text fragment to append (never raw JSON). */
+  text: string;
+}
+
+/** Run metadata delivered when a stream finishes (SNZ-061). */
+export interface StreamSummary {
+  usage: TokenUsage;
+  processingMs: number;
+  model: string;
+  /**
+   * Complete raw model output. The service validates this exactly like a
+   * synchronous response — display tokens are progressive hints only, never
+   * persisted.
+   */
+  content: string;
+}
