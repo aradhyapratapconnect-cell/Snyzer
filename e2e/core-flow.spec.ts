@@ -103,6 +103,14 @@ async function installMocks(page: Page, state: MockState): Promise<void> {
       });
       return;
     }
+    if (method === 'GET' && path === '/presets') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ presets: [] }),
+      });
+      return;
+    }
     if (method === 'PATCH' && path === '/preferences') {
       state.lastPatchBody = request.postDataJSON() as Record<string, unknown>;
       state.prefs = { ...state.prefs, ...state.lastPatchBody };
