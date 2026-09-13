@@ -160,6 +160,9 @@ const PROTECTED_ROUTES: Array<[string, string]> = [
   ['DELETE', '/api/v1/writing/jobs/11111111-1111-4111-8111-111111111111'],
   ['GET', '/api/v1/preferences'],
   ['PATCH', '/api/v1/preferences'],
+  ['GET', '/api/v1/presets'],
+  ['POST', '/api/v1/presets'],
+  ['DELETE', '/api/v1/presets/11111111-1111-4111-8111-111111111111'],
   ['DELETE', '/api/v1/account'],
 ];
 

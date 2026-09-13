@@ -7,6 +7,7 @@ import { securityHeaders } from './security/headers.js';
 import { healthRouter } from './routes/health.js';
 import { accountRouter } from './routes/account.js';
 import { preferencesRouter } from './routes/preferences.js';
+import { presetsRouter } from './routes/presets.js';
 import { writingRouter } from './routes/writing.js';
 
 /**
@@ -36,10 +37,12 @@ export function createApp(): Express {
   const apiLimiter = createApiLimiter();
   app.use('/api/v1/writing', apiLimiter);
   app.use('/api/v1/preferences', apiLimiter);
+  app.use('/api/v1/presets', apiLimiter);
   app.use('/api/v1/account', apiLimiter);
 
   app.use('/api/v1', writingRouter);
   app.use('/api/v1', preferencesRouter);
+  app.use('/api/v1', presetsRouter);
   app.use('/api/v1', accountRouter);
 
   app.use(notFoundHandler);

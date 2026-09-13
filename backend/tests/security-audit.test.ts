@@ -73,7 +73,7 @@ describe('checkProtectedRoutes', () => {
     const finding = await checkProtectedRoutes(async () => ({ status: 401, body: {} }));
 
     expect(finding.status).toBe('pass');
-    expect(finding.detail).toContain('7 protected routes');
+    expect(finding.detail).toContain('10 protected routes');
   });
 
   it('fails naming the leaking routes', async () => {

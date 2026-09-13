@@ -46,6 +46,9 @@ beforeEach(() => {
     if (path === '/preferences') {
       return { preferences: { ...defaultPreferences } };
     }
+    if (path === '/presets') {
+      return { presets: [] };
+    }
     if (path === '/writing/jobs') {
       expect(options?.method).toBe('POST');
       return jobResponse;
@@ -109,6 +112,9 @@ describe('WorkspacePage', () => {
     apiRequestMock.mockImplementation(async (path: string) => {
       if (path === '/preferences') {
         return { preferences: { ...defaultPreferences } };
+      }
+      if (path === '/presets') {
+        return { presets: [] };
       }
       throw new Error('provider down');
     });

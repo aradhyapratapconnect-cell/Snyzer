@@ -6,6 +6,7 @@
  */
 export * from './writing.js';
 export * from './preferences.js';
+export * from './presets.js';
 export * from './auth.js';
 
 export const SHARED_SCHEMAS_VERSION = '0.1.0' as const;

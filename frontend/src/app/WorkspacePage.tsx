@@ -7,6 +7,7 @@ import { RichEditor } from '../components/editor/RichEditor.js';
 import { htmlToPlainText } from '../components/editor/html.js';
 import { AnalysisPanel } from '../components/analysis/AnalysisPanel.js';
 import { ImproveButton } from '../features/writing/ImproveButton.js';
+import { PresetManager } from '../features/writing/PresetManager.js';
 import { ResultDisplay } from '../features/writing/ResultDisplay.js';
 import { WorkspaceErrorOverlay } from '../features/writing/WorkspaceErrorOverlay.js';
 import { WorkspaceLayout } from '../features/writing/WorkspaceLayout.js';
@@ -127,6 +128,24 @@ export function WorkspacePage() {
                 })
               }
               disabled={isProcessing}
+            />
+            <PresetManager
+              current={{
+                mode: selectedMode,
+                tone: selectedTone,
+                clarity: targets.clarity,
+                sentenceVariety: targets.sentenceVariety,
+              }}
+              onApply={(preset) =>
+                setControls({
+                  mode: preset.mode,
+                  tone: preset.tone,
+                  targets: {
+                    clarity: preset.clarity,
+                    sentenceVariety: preset.sentenceVariety,
+                  },
+                })
+              }
             />
             <ImproveButton disabled={!submittable} loading={isProcessing} onClick={handleImprove} />
             {activeError !== null && (
