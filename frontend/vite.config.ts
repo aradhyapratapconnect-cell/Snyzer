@@ -20,6 +20,37 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    // Vendor chunking (SNZ-059): the un-split bundle exceeded 1.1 MB, so each
+    // route load paid for the editor, auth client, and UI kit up front.
+    // Grouping disjoint third-party packages keeps the entry chunk small and
+    // lets browsers cache slow-moving vendor code across deploys.
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-editor': ['@tiptap/react', '@tiptap/starter-kit'],
+          'vendor-ui': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-label',
+            '@radix-ui/react-select',
+            '@radix-ui/react-slider',
+            '@radix-ui/react-slot',
+            'class-variance-authority',
+            'clsx',
+            'tailwind-merge',
+            'framer-motion',
+            'lucide-react',
+            'sonner',
+          ],
+          'vendor-forms': ['react-hook-form', '@hookform/resolvers', 'zod', 'zustand'],
+        },
+      },
+    },
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
