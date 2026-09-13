@@ -20,6 +20,7 @@
     "test:e2e": "playwright test",
     "test:coverage": "npm run coverage -w @snyzer/shared && npm run coverage -w @snyzer/backend && npm run coverage -w @snyzer/frontend",
     "verify:build": "node scripts/verify-build.mjs",
+    "smoke": "node scripts/smoke.mjs",
     "clean": "node scripts/clean.mjs"
   },
   "devDependencies": {

@@ -22,13 +22,43 @@ const POOL_CONNECTION_TIMEOUT_MS = 10_000;
 
 let pool: PgPool | undefined;
 
+/**
+ * TLS policy for the database connection (SNZ-060).
+ *
+ * Supabase and any remote Postgres must run over TLS with certificate
+ * verification. Local development (`localhost` / loopback) stays plaintext so
+ * `docker run postgres` needs no cert setup. Pure function of the connection
+ * string so it is unit-testable without a pool.
+ */
+export function databaseSslConfig(
+  connectionString: string,
+): { rejectUnauthorized: true } | undefined {
+  let hostname = '';
+  try {
+    hostname = new URL(connectionString).hostname.toLowerCase();
+  } catch {
+    return { rejectUnauthorized: true };
+  }
+  if (
+    hostname === '' ||
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '::1'
+  ) {
+    return undefined;
+  }
+  return { rejectUnauthorized: true };
+}
+
 function createPool(): PgPool {
   const env = getBackendEnv();
+  const ssl = databaseSslConfig(env.DATABASE_URL);
   return new Pool({
     connectionString: env.DATABASE_URL,
     max: POOL_MAX_CLIENTS,
     idleTimeoutMillis: POOL_IDLE_TIMEOUT_MS,
     connectionTimeoutMillis: POOL_CONNECTION_TIMEOUT_MS,
+    ...(ssl === undefined ? {} : { ssl }),
   });
 }
 
