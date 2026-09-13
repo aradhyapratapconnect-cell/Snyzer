@@ -75,7 +75,8 @@ DATABASE_URL="<prod-url>" npm run db:migrate -w @snyzer/backend
 
 # 4. Deploy backend (install production deps only), then the frontend bundle:
 #    backend:  npm ci --omit=dev && node dist/server.js
-#    frontend: upload frontend/dist/ to static hosting
+#    frontend: upload frontend/dist/ to static hosting (or connect Vercel —
+#    see "Vercel frontend deployment" below; vercel.json is committed).
 
 # 5. Point the frontend at the backend:
 #    - Same origin (recommended): serve frontend/dist and proxy /api to the backend.
@@ -102,7 +103,28 @@ BASE_URL="https://api.example.com" npm run smoke
 - [ ] Retention cadence decided: invoke `runRetentionCleanup()` (failed-job
       purge, 30-day default) on an ops schedule (SNZ-055).
 
-## 5. Rollback
+## 5. Vercel frontend deployment
+
+The backend is a long-lived Express process and stays on a Node host; only
+the frontend targets Vercel (no serverless adaptation — smallest change
+principle, SNZ-064).
+
+1. Import the GitHub repo into Vercel. `vercel.json` already pins
+   `installCommand` (`npm ci`), `buildCommand` (shared then frontend), and
+   `outputDirectory` (`frontend/dist`), plus SPA rewrites.
+2. Set **only** these in the Vercel project environment (Production):
+   `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`. Never add backend
+   secrets — a `VITE_`-prefixed secret would ship to browsers.
+3. Point `/api` at the backend: add a rewrite **before** the SPA catch-all
+   in `vercel.json`, e.g.
+   `{ "source": "/api/:path*", "destination": "https://api.example.com/api/:path*" }`,
+   or serve same-origin behind one domain. Then set the backend's
+   `CORS_ALLOWED_ORIGINS` to the exact Vercel origin (`https://<app>.vercel.app`).
+4. Redeploy, then verify: the app loads, login → workspace → Improve works,
+   history/settings persist, and no secret strings appear in the served JS
+   (re-run `security:audit` locally against the fresh build).
+
+## 6. Rollback
 
 Backend and frontend are versioned together by commit. To roll back, redeploy
 the previous green commit's artifacts (`node dist/server.js` +

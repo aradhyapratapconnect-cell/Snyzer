@@ -3462,3 +3462,288 @@ AI Coding Agent Instructions
 Build client-side file export utility supporting plain text and markdown formats.
 
 
+# SNZ-064 — GitHub & Vercel Production Deployment
+
+**Priority:** MUST-HAVE
+**Type:** Production / Deployment
+**Dependencies:** All previous MUST-HAVE tickets, especially SNZ-059 and SNZ-060
+
+## Description
+
+Prepare the complete Snyzer application for public release by making the repository **GitHub-ready** and the application **Vercel-ready**.
+
+The final result must be a clean, reproducible, secure production project that can be stored publicly on GitHub and deployed to Vercel without exposing secrets or breaking production functionality.
+
+---
+
+## Scope
+
+### GitHub Readiness
+
+Prepare the repository for public GitHub hosting.
+
+Requirements:
+
+* Ensure the complete source code is organized correctly.
+* Ensure `.gitignore` is present and comprehensive.
+* Never commit `.env`, API keys, passwords, tokens, database credentials, or other secrets.
+* Create/update `.env.example` containing only required variable names and safe placeholder values.
+* Remove development-only secrets or credentials from tracked files.
+* Remove unnecessary generated files, build artifacts, caches, and local machine files.
+* Ensure `package.json` and lockfiles are correct and reproducible.
+* Ensure all required dependencies are declared.
+* Ensure the project can be cloned and installed from a clean environment.
+* Ensure GitHub contains the source required to build and deploy Snyzer.
+* Add/update `README.md`.
+
+### README
+
+The README should clearly explain:
+
+* What Snyzer is
+* Main features
+* Technology stack
+* Project structure
+* Requirements/prerequisites
+* Local installation
+* Environment variables
+* Local development commands
+* Production build commands
+* Deployment instructions
+* Security notes
+* Contribution/development information where appropriate
+* License information if already defined by the project
+
+Do not put real credentials or secrets in the README.
+
+---
+
+## Vercel Readiness
+
+Prepare Snyzer for deployment on Vercel.
+
+Requirements:
+
+* Verify that the application builds successfully in a clean production environment.
+* Configure the correct Vercel build/install/output settings.
+* Configure the correct framework detection where possible.
+* Ensure frontend environment variables use only values safe for the client.
+* Keep all server-side secrets server-side.
+* Ensure the OpenRouter API key is never exposed to browser code.
+* Ensure Supabase secret/service credentials are never exposed to browser code.
+* Configure production environment variables through Vercel rather than committing them to Git.
+* Verify API/server functionality works correctly in the Vercel deployment architecture.
+* Verify routing works correctly after deployment.
+* Verify static assets load correctly.
+* Verify production error handling.
+* Verify authentication works in production.
+* Verify database access and RLS work correctly in production.
+* Verify CORS/origin configuration where applicable.
+* Verify HTTPS-compatible cookie/authentication behavior where applicable.
+
+---
+
+## Security Verification
+
+Before deployment, perform a final security review.
+
+Check for:
+
+* Hard-coded API keys
+* Hard-coded passwords
+* Supabase secret/service keys in frontend code
+* OpenRouter keys in frontend code
+* Secrets accidentally included in Git history where practical
+* Sensitive information in logs
+* Debug endpoints
+* Development-only authentication bypasses
+* Development-only routes
+* Exposed stack traces
+* Insecure production configuration
+* Incorrect environment-variable prefixes
+* Client-trusted authorization or ownership fields
+
+If a secret has previously been committed to a repository, do not simply remove it from the latest commit. Treat it as compromised and recommend rotating/revoking it.
+
+---
+
+## Production Build Verification
+
+Run the complete production validation:
+
+1. Clean install dependencies.
+2. Run type checking.
+3. Run linting.
+4. Run unit/component tests.
+5. Run integration/API tests where applicable.
+6. Run the production build.
+7. Verify the generated production output.
+8. Check for build warnings and errors.
+9. Verify there are no missing environment variables.
+10. Verify there are no broken imports or assets.
+11. Verify the application starts/serves correctly in its intended deployment environment.
+
+Do not claim deployment readiness if the production build has not actually been verified.
+
+---
+
+## Vercel Deployment Verification
+
+After connecting the GitHub repository to Vercel:
+
+Verify:
+
+* Production deployment succeeds.
+* Build succeeds on Vercel.
+* Application loads correctly.
+* Main workspace works.
+* Writing improvement flow works.
+* Authentication works.
+* History works where implemented.
+* Settings/preferences work where implemented.
+* Database operations work.
+* AI provider requests work.
+* Error states work.
+* Responsive UI works.
+* No secrets appear in browser source, network responses, or client bundles.
+
+Test both:
+
+* Local production build
+* Actual Vercel deployment
+
+---
+
+## GitHub Repository Quality
+
+Before the final push, ensure the repository contains only appropriate project files.
+
+Recommended structure:
+
+```text
+snyzer/
+├── src/
+├── public/
+├── ...
+├── .env.example
+├── .gitignore
+├── README.md
+├── package.json
+├── lockfile
+├── tsconfig.json
+├── ...
+└── LICENSE
+```
+
+Adapt this structure to the actual Snyzer architecture rather than forcing this exact structure.
+
+---
+
+## Acceptance Criteria
+
+* [ ] Snyzer can be cloned from GitHub.
+* [ ] A clean dependency installation succeeds.
+* [ ] TypeScript passes.
+* [ ] Lint passes.
+* [ ] Tests pass.
+* [ ] Production build succeeds.
+* [ ] `.gitignore` prevents secrets and generated files from being committed.
+* [ ] `.env.example` documents required variables without containing real secrets.
+* [ ] README contains complete setup instructions.
+* [ ] No API keys or private credentials are present in the repository.
+* [ ] OpenRouter credentials remain server-side.
+* [ ] Supabase secret/service credentials remain server-side.
+* [ ] Production environment variables are configured through Vercel.
+* [ ] Snyzer successfully deploys to Vercel.
+* [ ] The deployed application loads correctly.
+* [ ] Authentication works in production.
+* [ ] Database access works in production.
+* [ ] AI writing improvement works in production.
+* [ ] Production routing works.
+* [ ] No critical browser-console errors remain.
+* [ ] No critical security issues remain.
+* [ ] No development authentication bypasses or debug functionality remain enabled.
+* [ ] The final GitHub repository is suitable for public viewing.
+
+---
+
+## Success Metric
+
+**Snyzer can be cloned from GitHub and successfully deployed to Vercel from a clean environment, with all implemented production functionality working and no secrets exposed.**
+
+---
+
+## Technical Notes
+
+* Do not hard-code Vercel-specific assumptions if the existing architecture uses a different deployment pattern.
+* Use Vercel environment variables for production secrets.
+* Do not expose server-only environment variables through frontend build configuration.
+* Do not commit `.env` files containing credentials.
+* Do not weaken authentication or RLS to make deployment easier.
+* Do not disable security controls merely to resolve deployment errors.
+* If Vercel requires architectural changes, make the smallest change necessary and document it.
+* Preserve existing functionality.
+* Do not implement unrelated future features.
+
+---
+
+## Final Git Workflow
+
+Before pushing:
+
+```bash
+git status
+git diff
+```
+
+Review all changed files.
+
+Then:
+
+```bash
+git add .
+git commit -m "chore(snz-064): prepare GitHub and Vercel production deployment"
+git push
+```
+
+Only push after confirming that no secrets or unintended files are included.
+
+---
+
+## Final Report
+
+After completion, report:
+
+**GitHub**
+
+* Repository readiness:
+* README:
+* `.gitignore`:
+* Environment configuration:
+
+**Production Build**
+
+* Typecheck:
+* Lint:
+* Tests:
+* Build:
+
+**Vercel**
+
+* Deployment:
+* Production URL:
+* Authentication:
+* Database:
+* AI functionality:
+
+**Security**
+
+* Secrets checked:
+* Client bundle checked:
+* Production configuration checked:
+
+**Known Issues**
+
+* ...
+
+Then STOP.
