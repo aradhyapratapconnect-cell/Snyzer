@@ -7,8 +7,12 @@ import { REQUEST_ID_HEADER } from '../src/middleware/requestId.js';
 
 /**
  * SNZ-002 integration tests: health probe, 404 envelope, payload limits,
- * and production error sanitization.
+ * and production error sanitization. The structured logger is mocked to keep
+ * test output clean (redaction itself is covered in logger.test.ts).
  */
+vi.mock('../src/utils/logger.js', () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), child: vi.fn() },
+}));
 
 const app = createApp();
 
@@ -88,7 +92,6 @@ describe('errorHandler production sanitization', () => {
 
   it('hides internals and stack traces when NODE_ENV is production', () => {
     vi.stubEnv('NODE_ENV', 'production');
-    vi.spyOn(console, 'error').mockImplementation(() => {});
     const res = mockResponse();
     const secretLeakingError = Object.assign(
       new Error('connect postgresql://user:secret-pw@db:5432/snyzer failed'),
@@ -109,7 +112,6 @@ describe('errorHandler production sanitization', () => {
 
   it('exposes the error message outside production', () => {
     vi.stubEnv('NODE_ENV', 'development');
-    vi.spyOn(console, 'error').mockImplementation(() => {});
     const res = mockResponse();
 
     errorHandler(

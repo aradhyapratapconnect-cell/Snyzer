@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
+import { logger } from '../utils/logger.js';
 
 /**
  * Standardized error handling (SNZ-002 foundation, SNZ-018 hierarchy).
@@ -8,9 +9,8 @@ import type { NextFunction, Request, Response } from 'express';
  * and middleware signal failures with `AppError` subclasses and let this
  * serializer produce the envelope, so clients see one uniform shape.
  * Production 5xx responses never leak messages, stacks, or internals;
- * diagnostics (including request IDs) stay in server-side logs only.
- *
- * SNZ-019 will replace `console.error` with the structured logger.
+ * diagnostics (including request IDs) go to the structured logger only
+ * (SNZ-019).
  */
 
 export interface ApiErrorEnvelope {
@@ -141,6 +141,14 @@ function sendError(
   res.status(status).json(body);
 }
 
+/** Structured server-side failure log: request ID, route, and full error. */
+function logFailure(req: Request, err: unknown): void {
+  logger.error(
+    { requestId: req.id ?? 'unknown', method: req.method, path: req.path, err },
+    'Request failed',
+  );
+}
+
 /** Global error middleware. Must be registered last (four-argument signature). */
 export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction): void {
   // Body-parser failures carry `type` instead of `status`.
@@ -159,7 +167,7 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   if (err instanceof AppError) {
     if (err.status >= 500) {
       // Internal diagnostics only — never sent to the client.
-      console.error(`[${req.id ?? 'unknown'}] ${req.method} ${req.path} failed`, err);
+      logFailure(req, err);
     }
     const isProduction = process.env.NODE_ENV === 'production';
     const message = err.status >= 500 && isProduction ? GENERIC_SERVER_MESSAGE : err.message;
@@ -172,7 +180,7 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
 
   if (status >= 500) {
     // Internal diagnostics only — never sent to the client.
-    console.error(`[${req.id ?? 'unknown'}] ${req.method} ${req.path} failed`, err);
+    logFailure(req, err);
   }
 
   const rawMessage = err instanceof Error && err.message !== '' ? err.message : undefined;

@@ -15,10 +15,27 @@ import {
 } from '../src/middleware/errorHandler.js';
 
 /**
- * SNZ-018 unit tests: error class instantiation/mapping plus middleware
- * serialization (uniform envelope, production sanitization, internal
- * request-ID logging, async safety). No network involved.
+ * SNZ-018 unit tests (SNZ-019 logging): error class instantiation/mapping
+ * plus middleware serialization (uniform envelope, production sanitization,
+ * internal request-ID logging, async safety). The structured logger is
+ * mocked; its redaction behavior is covered in logger.test.ts.
  */
+const loggerMocks = vi.hoisted(() => ({
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+}));
+
+vi.mock('../src/utils/logger.js', () => ({
+  logger: {
+    info: loggerMocks.info,
+    warn: loggerMocks.warn,
+    error: loggerMocks.error,
+    debug: loggerMocks.debug,
+    child: vi.fn(),
+  },
+}));
 interface MockResponse {
   statusCode: number;
   body: unknown;
@@ -118,7 +135,6 @@ describe('errorHandler serialization', () => {
 
   it('hides 500 messages and stacks in production while logging request IDs', () => {
     vi.stubEnv('NODE_ENV', 'production');
-    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
     const res = mockResponse();
     const boom = new Error('postgres://user:secret@localhost/db exploded');
 
@@ -132,8 +148,8 @@ describe('errorHandler serialization', () => {
       },
     });
     expect(JSON.stringify(res.body)).not.toContain('stack');
-    expect(errorLog).toHaveBeenCalledTimes(1);
-    expect(String(errorLog.mock.calls[0]?.[0])).toContain('req-123');
+    expect(loggerMocks.error).toHaveBeenCalledTimes(1);
+    expect(loggerMocks.error.mock.calls[0]?.[0]).toMatchObject({ requestId: 'req-123' });
   });
 
   it('passes non-operational status codes through with mapped codes', () => {

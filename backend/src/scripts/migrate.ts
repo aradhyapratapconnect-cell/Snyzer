@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { closeDatabase, formatDatabaseError, getPool } from '../config/database.js';
 import { getBackendEnv } from '../config/env.js';
 import { runMigrations } from '../config/migrator.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * `npm run db:migrate -w @snyzer/backend` entrypoint (SNZ-005).
@@ -17,14 +18,12 @@ async function main(): Promise<void> {
   const pool = getPool();
   try {
     const { applied, skipped } = await runMigrations(pool, migrationsDir);
-    console.log(
-      `[snyzer-backend] migrations complete: ${applied.length} applied, ${skipped.length} skipped`,
-    );
+    logger.info({ applied: applied.length, skipped: skipped.length }, 'Migrations complete');
     for (const version of applied) {
-      console.log(`[snyzer-backend] applied migration ${version}`);
+      logger.info({ version }, 'Applied migration');
     }
   } catch (error) {
-    console.error('[snyzer-backend] migration failed', formatDatabaseError(error));
+    logger.error({ error: formatDatabaseError(error) }, 'Migration failed');
     process.exitCode = 1;
   } finally {
     await closeDatabase();
