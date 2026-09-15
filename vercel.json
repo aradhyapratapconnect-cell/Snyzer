@@ -1,16 +1,28 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": null,
-  "installCommand": "npm ci && npm run build -w @snyzer/shared",
-  "buildCommand": "npm run build -w @snyzer/frontend",
-  "outputDirectory": "frontend/dist",
-  "functions": {
-    "api/index.ts": {
-      "maxDuration": 60
+  "services": {
+    "frontend": {
+      "root": "frontend/",
+      "framework": "vite"
+    },
+    "backend": {
+      "root": "backend/",
+      "framework": "express",
+      "entrypoint": "src/vercel.ts"
     }
   },
   "rewrites": [
-    { "source": "/api/:snyzerPath*", "destination": "/api/index" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "frontend"
+      }
+    }
   ]
 }
