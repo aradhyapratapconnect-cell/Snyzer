@@ -10,10 +10,16 @@ automatically — every step below is an explicit local command.
   files are served (Vercel, Netlify, S3+CloudFront, …). It talks to the
   backend same-origin at `/api/v1` (production) or via the dev proxy
   (local development only).
-- **Backend** (`backend/`): long-lived Node 20+ process (`node
-dist/server.js`). Host on any Node platform (Render, Railway, Fly.io,
-  a VPS, …). Requires network access to Supabase Postgres and
-  OpenRouter.
+- **Backend** (`backend/`): the Express app in `src/app.ts`
+  (`createApp()`), runnable two ways without source changes:
+  - **Vercel (recommended)**: `api/index.ts` wraps the same app as a
+    single Vercel Function in the one `Snyzer` project — frontend and
+    API deploy together under one domain (frontend statics from
+    `frontend/dist`, API through the `/api/*` rewrite). No separate
+    backend project.
+  - **Node host**: long-lived Node 20+ process (`node
+dist/server.js`) on Render, Railway, Fly.io, a VPS, … Requires
+    network access to Supabase Postgres and OpenRouter.
 - **Database**: Supabase Postgres. Schema is managed by the SQL
   migrations in `backend/src/db/migrations/` (applied with
   `npm run db:migrate -w @snyzer/backend`).
@@ -103,26 +109,55 @@ BASE_URL="https://api.example.com" npm run smoke
 - [ ] Retention cadence decided: invoke `runRetentionCleanup()` (failed-job
       purge, 30-day default) on an ops schedule (SNZ-055).
 
-## 5. Vercel frontend deployment
+## 5. Vercel deployment (single project: frontend + API)
 
-The backend is a long-lived Express process and stays on a Node host; only
-the frontend targets Vercel (no serverless adaptation — smallest change
-principle, SNZ-064).
+One Vercel project (`Snyzer`, Root Directory = repository root) serves
+both halves. `vercel.json` pins the commands and routing:
 
-1. Import the GitHub repo into Vercel. `vercel.json` already pins
-   `installCommand` (`npm ci`), `buildCommand` (shared then frontend), and
-   `outputDirectory` (`frontend/dist`), plus SPA rewrites.
-2. Set **only** these in the Vercel project environment (Production):
-   `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`. Never add backend
-   secrets — a `VITE_`-prefixed secret would ship to browsers.
-3. Point `/api` at the backend: add a rewrite **before** the SPA catch-all
-   in `vercel.json`, e.g.
-   `{ "source": "/api/:path*", "destination": "https://api.example.com/api/:path*" }`,
-   or serve same-origin behind one domain. Then set the backend's
-   `CORS_ALLOWED_ORIGINS` to the exact Vercel origin (`https://<app>.vercel.app`).
-4. Redeploy, then verify: the app loads, login → workspace → Improve works,
-   history/settings persist, and no secret strings appear in the served JS
-   (re-run `security:audit` locally against the fresh build).
+- **Install Command**: `npm ci && npm run build -w @snyzer/shared` —
+  hoists the workspaces, then compiles `@snyzer/shared` so both the
+  Vite build and the API function can resolve it. Nothing else is
+  needed before the build phase.
+- **Build Command**: `npm run build -w @snyzer/frontend` — Vite bundle
+  into `frontend/dist`. Runs the `prebuild` env guard, so the two
+  `VITE_*` variables below must exist in the Vercel project
+  environment at build time.
+- **Output Directory**: `frontend/dist`.
+- **API**: `api/index.ts` (default-exports the existing Express app)
+  becomes the `api/index.ts` function; `{ "source": "/api/:path*",
+"destination": "/api/index" }` routes every `/api/*` request to it.
+  The entrypoint restores the original `/api/v1/...` path before the
+  Express router sees it (see `api/index.ts`), so the API behaves
+  exactly as it does locally. Max duration is pinned to 60 s
+  (`functions["api/index.ts"].maxDuration`) — the Hobby ceiling.
+- **SPA fallback**: `{ "source": "/((?!api/).*)", "destination":
+"/index.html" }` keeps client-side routes working without touching
+  `/api/*` or static assets.
+
+Environment variables (Project → Settings → Environment Variables):
+
+1. `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_KEY` — Production
+   **and** Preview (they are baked into the frontend bundle at build
+   time).
+2. Backend secrets for Production **and** Preview: `DATABASE_URL`,
+   `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `OPENROUTER_API_KEY`, plus
+   tuning (`RATE_LIMIT_*`, `DAILY_JOB_LIMIT`, `MAX_TEXT_LENGTH`,
+   optional `OPENROUTER_SITE_URL` / `APP_NAME`). Set
+   `CORS_ALLOWED_ORIGINS` to the production origin (and custom domain
+   if any); leave it unset for same-origin-only traffic.
+3. Add the production URL (`https://<app>.vercel.app`, plus any custom
+   domain) to Supabase **Site URL** and **Redirect URLs** so email
+   links and OAuth-style redirects land back on the app.
+
+Worst known case: a full AI call (three 20 s attempts + backoff) can
+just exceed the Hobby 60 s function limit; the request then fails as
+a platform timeout. If slow generations time out often, raise
+`maxDuration` on a paid plan (Pro: up to 300 s) instead of changing
+application code.
+
+The Node-host path (module: `node backend/dist/server.js`) remains
+supported for environments that need a long-lived process; the new
+`vercel.json` does not affect it.
 
 ## 6. Rollback
 

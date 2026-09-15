@@ -37,13 +37,17 @@ and a hardened security baseline are built in.
   Tailwind 3 · React Router 7 · Zustand · Radix primitives · Tiptap ·
   Vitest + Testing Library · Playwright E2E.
 - **Database/Auth** — Supabase Postgres (RLS on every table) + Supabase Auth.
-- **AI** — OpenRouter chat completions (default `openai/gpt-4o-mini`,
+- **API** — OpenRouter chat completions (default `openai/gpt-4o-mini`,
   overridable per deployment).
+- **Deployment** — one Vercel project (`Snyzer`, repo root): static
+  frontend from `frontend/dist` plus the Express API as the
+  `api/index.ts` serverless function under `/api/*`.
 
 ## Project structure
 
 ```text
 snyzer/
+├── api/                    Vercel function entrypoint (wraps backend app)
 ├── shared/                 @snyzer/shared — Zod schemas, types
 ├── backend/
 │   ├── src/                Express app, routes, controllers, services, security
@@ -57,7 +61,8 @@ snyzer/
 ├── docs/DEPLOYMENT.md      release procedure + hardening checklist
 ├── Snyzer_Documentation/   PRD, architecture, security, frontend spec, tickets
 ├── playwright.config.ts    headless Chromium E2E runner
-├── vercel.json             frontend deployment (static + SPA rewrites)
+├── vercel.json             single-project deployment (static frontend +
+│                          Express API function, routing, function limits)
 ├── .env.example            placeholder-only environment template
 └── package.json            npm workspaces root
 ```
@@ -153,13 +158,16 @@ backend/dist/server.js`).
 Full procedure, hardening checklist, and troubleshooting:
 **[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)**.
 
-- **Frontend → Vercel**: import the repo, set `VITE_*` env vars in the
+- **Vercel → one project** (`Snyzer`, Root Directory = repo root): import
+  the repo, set the frontend `VITE_*` vars plus the backend secrets in the
   project settings, deploy — `vercel.json` already pins install/build/output
-  and SPA rewrites. Point `/api` at the backend (rewrite or same-origin
-  proxy) and list the exact frontend origin in `CORS_ALLOWED_ORIGINS`.
-- **Backend → Node host** (Render / Railway / Fly.io / VPS): `npm ci
---omit=dev`, run migrations, `node dist/server.js`. Express is a
-  long-lived process — it is not adapted to serverless functions.
+  commands, the `/api/*` → Express function routing, SPA rewrites, and the
+  function duration. No separate backend project. Set
+  `CORS_ALLOWED_ORIGINS` to the exact Vercel origin and register the
+  production URL in Supabase (Site URL + Redirect URLs).
+- **Backend → Node host** (Render / Railway / Fly.io / VPS, optional):
+  `npm ci --omit=dev`, run migrations, `node dist/server.js`. Express is a
+  long-lived process there — it is not adapted to serverless functions.
 - **Post-deploy**: `BASE_URL=https://… npm run smoke` must print OK.
 
 ## Security notes

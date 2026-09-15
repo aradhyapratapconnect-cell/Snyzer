@@ -23,6 +23,12 @@ export function createApp(): Express {
   const app = express();
 
   app.disable('x-powered-by');
+  // Behind a single managed edge/proxy hop (Vercel, or any Node host fronted by
+  // one), trust exactly that hop so `req.ip` is the real client address. IP is
+  // only the fallback rate-limit key (user ID wins once authenticated), but an
+  // untrusted proxy would collapse every caller onto the platform's address.
+  // Local runs and supertest send no `X-Forwarded-For`, so nothing changes there.
+  app.set('trust proxy', 1);
   app.use(securityHeaders());
   app.use(requestIdMiddleware);
   app.use(corsMiddleware());

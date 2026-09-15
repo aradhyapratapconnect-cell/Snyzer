@@ -12,7 +12,8 @@
   ],
   "scripts": {
     "build": "npm run build -w @snyzer/shared && npm run build -w @snyzer/backend && npm run build -w @snyzer/frontend",
-    "typecheck": "npm run build -w @snyzer/shared && npm run typecheck -w @snyzer/shared && npm run typecheck -w @snyzer/backend && npm run typecheck -w @snyzer/frontend",
+    "typecheck": "npm run build -w @snyzer/shared && npm run typecheck -w @snyzer/shared && npm run typecheck -w @snyzer/backend && npm run typecheck -w @snyzer/frontend && npm run typecheck:api",
+    "typecheck:api": "tsc --noEmit -p api/tsconfig.json",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --check .",
     "format:write": "prettier --write .",

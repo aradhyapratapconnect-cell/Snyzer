@@ -106,6 +106,17 @@ check(
 );
 check('frontend index.html exists', existsSync(join(rootDir, 'frontend', 'index.html')));
 
+// 4c. Vercel single-project entrypoint (api/ wraps the backend Express app)
+const apiEntry = join(rootDir, 'api', 'index.ts');
+check('api/index.ts exists (Vercel function entrypoint)', existsSync(apiEntry));
+if (existsSync(apiEntry)) {
+  const apiSrc = readFileSync(apiEntry, 'utf8');
+  check(
+    'api/index.ts imports createApp from backend/src',
+    apiSrc.includes("from '../backend/src/app.js'") && apiSrc.includes('createApp'),
+  );
+}
+
 // 5. Build outputs (requires `npm run build` first)
 check(
   'shared dist/index.js exists',

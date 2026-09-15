@@ -31,6 +31,9 @@ Thumbs.db
 .vite/
 *.tsbuildinfo
 
+# Vercel CLI (local linking / build output)
+.vercel/
+
 # Playwright
 test-results/
 playwright-report/
