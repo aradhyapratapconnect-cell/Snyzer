@@ -13,18 +13,24 @@ import { createApp } from '../backend/src/app.js';
  * same app as a long-lived process for Node hosts, and this file only adapts
  * the runtime around it for Vercel.
  *
- * Why the wrapper app: the project rewrite into this function (`/api/:path*`
- * -> `/api/index`) collapses the request path onto the function path and hands
- * the captured remainder over as the `path` query parameter (Vercel turns
- * matched rewrite segments into query parameters). The Express router mounts
- * everything under `/api/v1`, so the original path has to be restored before
- * the app sees the request. The wrapper runs that restoration first, then
- * delegates to the untouched app, so routing, auth, validation, rate limiting,
- * error envelopes and SSE streaming behave exactly as they do locally. When the
- * platform preserves the path instead (no capture present), it is a no-op.
+ * Why the wrapper app: the project rewrite into this function
+ * (`/api/:snyzerPath*` -> `/api/index`) collapses the request path onto the
+ * function path and hands the captured remainder over as the `snyzerPath`
+ * query parameter (Vercel converts matched rewrite segments into query
+ * parameters — e.g. `/resize/:w/:h` -> `/api/sharp?w=800&h=600`). The Express
+ * router mounts everything under `/api/v1`, so the original path has to be
+ * restored before the app sees the request. The wrapper runs that restoration
+ * first, then delegates to the untouched app, so routing, auth, validation,
+ * rate limiting, error envelopes and SSE streaming behave exactly as they do
+ * locally. When the platform preserves the original path instead (no marker
+ * present), the middleware is a no-op.
+ *
+ * The marker name is deliberately unique (`snyzerPath`, not `path`) so it can
+ * never collide with a real query parameter the API or a client may use —
+ * the middleware only ever strips routing metadata, never API data.
  */
 const API_PREFIX = '/api';
-const CAPTURED_PATH_PARAM = 'path';
+const CAPTURED_PATH_PARAM = 'snyzerPath';
 
 /** Splits a raw request URL into its pathname and search (search keeps `?`). */
 function splitUrl(url: string): { pathname: string; search: string } {

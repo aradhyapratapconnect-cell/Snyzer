@@ -21,7 +21,7 @@ automatically — every step below is an explicit local command.
 dist/server.js`) on Render, Railway, Fly.io, a VPS, … Requires
     network access to Supabase Postgres and OpenRouter.
 - **Database**: Supabase Postgres. Schema is managed by the SQL
-  migrations in `backend/src/db/migrations/` (applied with
+  migrations in `backend/migrations/` (applied with
   `npm run db:migrate -w @snyzer/backend`).
 
 ## 2. Environment variables
@@ -166,7 +166,7 @@ the previous green commit's artifacts (`node dist/server.js` +
 `frontend/dist/`) and re-run `npm run smoke`. Migrations are additive —
 no down-migration is needed for any release in the current series.
 
-## 6. Troubleshooting
+## 7. Troubleshooting
 
 | Symptom                              | Likely cause / fix                                                                   |
 | ------------------------------------ | ------------------------------------------------------------------------------------ |
