@@ -3,7 +3,8 @@
   "services": {
     "frontend": {
       "root": "frontend/",
-      "framework": "vite"
+      "framework": "vite",
+      "installCommand": "cd .. && npm ci && npm run build -w @snyzer/shared"
     },
     "backend": {
       "root": "backend/",
