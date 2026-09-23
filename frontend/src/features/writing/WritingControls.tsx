@@ -50,10 +50,10 @@ export function WritingControls({
   return (
     <div className="space-y-4">
       <div>
-        <span id="mode-label" className="text-sm font-medium text-ink-light dark:text-ink-dark">
+        <span id="mode-label" className="text-sm font-medium text-slate-200">
           Improvement mode
         </span>
-        <div role="group" aria-labelledby="mode-label" className="mt-1 flex flex-wrap gap-1">
+        <div role="group" aria-labelledby="mode-label" className="mt-1.5 flex flex-wrap gap-1.5">
           {MODES.map((option) => (
             <button
               key={option.value}
@@ -64,10 +64,10 @@ export function WritingControls({
                 onChange({ ...values, mode: option.value });
               }}
               className={cn(
-                'rounded-lg border px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50',
+                'rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 disabled:opacity-50 active:scale-95',
                 values.mode === option.value
-                  ? 'border-primary bg-primary/10 text-ink-light dark:border-primary-dark dark:text-ink-dark'
-                  : 'border-line-light text-subink-light hover:text-ink-light dark:border-line-dark dark:text-subink-dark dark:hover:text-ink-dark',
+                  ? 'border-teal-400/50 bg-teal-400/15 text-teal-200 shadow-[0_0_12px_rgba(45,212,191,0.2)]'
+                  : 'border-teal-500/20 bg-teal-950/30 text-slate-300 hover:border-teal-400/40 hover:text-teal-200',
               )}
             >
               {option.label}
@@ -100,10 +100,8 @@ export function WritingControls({
 
       <div>
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-ink-light dark:text-ink-dark">
-            Target clarity
-          </span>
-          <span className="text-xs text-subink-light dark:text-subink-dark">{values.clarity}</span>
+          <span className="text-sm font-medium text-slate-200">Target clarity</span>
+          <span className="font-code text-xs text-teal-300">{values.clarity}</span>
         </div>
         <Slider
           min={0}
@@ -123,12 +121,8 @@ export function WritingControls({
 
       <div>
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-ink-light dark:text-ink-dark">
-            Sentence variety
-          </span>
-          <span className="text-xs text-subink-light dark:text-subink-dark">
-            {values.sentenceVariety}
-          </span>
+          <span className="text-sm font-medium text-slate-200">Sentence variety</span>
+          <span className="font-code text-xs text-teal-300">{values.sentenceVariety}</span>
         </div>
         <Slider
           min={0}

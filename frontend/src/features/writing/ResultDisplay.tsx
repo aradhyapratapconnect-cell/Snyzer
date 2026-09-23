@@ -53,17 +53,30 @@ export function ResultDisplay() {
   if (streamingText !== null) {
     return (
       <div className="space-y-3" aria-live="polite" aria-label="Generating revision">
-        <p className="text-xs font-medium tracking-wide text-subink-light uppercase dark:text-subink-dark">
+        <p className="font-code text-xs font-semibold tracking-wide text-teal-300 uppercase">
           Generating…
         </p>
-        <div className="min-h-24 text-sm leading-relaxed whitespace-pre-wrap">
+        <div className="min-h-24 text-sm leading-relaxed whitespace-pre-wrap text-slate-100">
           {streamingText === '' ? (
-            <span className="text-subink-light dark:text-subink-dark">
+            <span className="text-slate-400">
               The first words are on their way.
+              <span
+                aria-hidden="true"
+                className="animate-cursor ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 bg-teal-300"
+              />
             </span>
           ) : (
-            streamingText
+            <>
+              {streamingText}
+              <span
+                aria-hidden="true"
+                className="animate-cursor ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 bg-teal-300"
+              />
+            </>
           )}
+        </div>
+        <div aria-hidden="true" className="h-1 overflow-hidden rounded-full bg-teal-950">
+          <div className="animate-laser h-full w-1/3 rounded-full bg-gradient-to-r from-transparent via-teal-300 to-transparent" />
         </div>
       </div>
     );
@@ -72,9 +85,7 @@ export function ResultDisplay() {
   if (currentResult === null) {
     return (
       <div className="space-y-3">
-        <p className="text-sm text-subink-light dark:text-subink-dark">
-          Your improved text will appear here.
-        </p>
+        <p className="text-sm text-slate-400">Your improved text will appear here.</p>
         <ExportButton draft={inputText} revision={null} mode={selectedMode} tone={selectedTone} />
       </div>
     );
@@ -95,7 +106,9 @@ export function ResultDisplay() {
 
   return (
     <div className="space-y-3">
-      <div className="whitespace-pre-wrap text-sm leading-relaxed">{currentResult.outputText}</div>
+      <div className="font-editorial whitespace-pre-wrap text-[15px] leading-relaxed text-slate-100">
+        {currentResult.outputText}
+      </div>
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" variant="secondary" onClick={() => void handleCopy()}>
           {copied ? 'Copied ✓' : 'Copy'}

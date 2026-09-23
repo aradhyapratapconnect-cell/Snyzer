@@ -1,0 +1,6 @@
+{
+  "name": "Snyzer",
+  "description": "Web-based AI-assisted writing editor preserving human intent and cadence with real-time neural language revision.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

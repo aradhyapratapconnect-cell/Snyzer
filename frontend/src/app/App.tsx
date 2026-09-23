@@ -1,4 +1,4 @@
-import { SHARED_PACKAGE_VERSION } from '@snyzer/shared';
+import { Footer } from '../components/layout/Footer.js';
 import { AppLayout } from '../components/layout/AppLayout.js';
 import { A11yAnnouncer } from '../components/layout/A11yAnnouncer.js';
 import { Toaster } from '../components/ui/toaster.js';
@@ -16,12 +16,7 @@ export function App() {
       className="flex min-h-screen flex-col bg-canvas-light text-ink-light dark:bg-canvas-dark dark:text-ink-dark"
     >
       <AppLayout />
-      <footer className="border-t border-line-light dark:border-line-dark">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4 text-xs text-subink-light dark:text-subink-dark">
-          <span>Snyzer writing workspace</span>
-          <span>shared v{SHARED_PACKAGE_VERSION}</span>
-        </div>
-      </footer>
+      <Footer />
       <Toaster />
       <A11yAnnouncer />
     </div>

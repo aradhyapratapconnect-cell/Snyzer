@@ -94,7 +94,11 @@ export function UpdatePasswordForm() {
             {serverError}
           </div>
         )}
-        <Button type="submit" disabled={isSubmitting} className="w-full">
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full bg-[#091e3a] font-semibold text-white hover:bg-[#0d2a52] dark:bg-teal-400 dark:text-slate-950 dark:hover:bg-teal-300"
+        >
           {isSubmitting && <Spinner />}
           {isSubmitting ? 'Updating…' : 'Update password'}
         </Button>

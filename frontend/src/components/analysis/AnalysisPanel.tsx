@@ -67,7 +67,7 @@ export function scoreBand(value: number, inverted = false): string {
 export function AnalysisPanel({ analysis }: { analysis: Analysis }) {
   return (
     <section aria-label="Writing analysis" className="space-y-4">
-      <h2 className="text-base font-semibold">Writing analysis</h2>
+      <h2 className="text-base font-semibold text-white">Writing analysis</h2>
       <dl className="space-y-3">
         {METRICS.map((metric) => {
           const value = analysis[metric.key];
@@ -75,12 +75,12 @@ export function AnalysisPanel({ analysis }: { analysis: Analysis }) {
             <div key={metric.key}>
               <div className="flex items-baseline justify-between gap-2">
                 <dt
-                  className="cursor-help text-sm font-medium underline decoration-dotted underline-offset-2"
+                  className="cursor-help text-sm font-medium text-slate-200 underline decoration-dotted underline-offset-2"
                   title={metric.explanation}
                 >
                   {metric.label}
                 </dt>
-                <dd className="text-xs text-subink-light dark:text-subink-dark">
+                <dd className="font-code text-xs text-teal-300/80">
                   {Math.round(value)} — {scoreBand(value, metric.inverted)}
                 </dd>
               </div>

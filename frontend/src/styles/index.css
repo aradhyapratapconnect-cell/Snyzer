@@ -2,14 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * Snyzer production theme.
+ *
+ * Visual language adapted from the product demo reference (dark cinematic
+ * canvas, teal glow accents, editorial display type) and rebuilt on the real
+ * production token system. Color hex values stay in `tokens.ts`; this file
+ * owns fonts, keyframes, scrollbars, and display-type utilities only.
+ */
+
 :root {
   color-scheme: light dark;
+  font-family:
+    'Hanken Grotesk',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
 }
 
 body {
   @apply bg-canvas-light text-ink-light antialiased;
   font-family:
-    Inter,
+    'Hanken Grotesk',
     ui-sans-serif,
     system-ui,
     -apple-system,
@@ -18,8 +34,96 @@ body {
     'Helvetica Neue',
     Arial,
     sans-serif;
+  overflow-x: hidden;
 }
 
 .dark body {
   @apply bg-canvas-dark text-ink-dark;
+  background-color: #030c14;
+}
+
+/* Display / editorial / mono type, mirroring the demo reference. */
+.font-display {
+  font-family: 'Bodoni Moda', Georgia, serif;
+}
+
+.font-editorial {
+  font-family: 'Bodoni Moda', Georgia, serif;
+}
+
+.font-code {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+::selection {
+  background-color: rgba(45, 212, 191, 0.35);
+}
+
+@keyframes snyzer-laser-sweep {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.8;
+  }
+  80% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(340px);
+    opacity: 0;
+  }
+}
+
+.animate-laser {
+  animation: snyzer-laser-sweep 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes snyzer-blink-cursor {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.animate-cursor {
+  animation: snyzer-blink-cursor 0.9s infinite;
+}
+
+@keyframes snyzer-pulse-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 25px rgba(45, 212, 191, 0.45),
+      inset 0 0 15px rgba(45, 212, 191, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 45px rgba(45, 212, 191, 0.75),
+      inset 0 0 22px rgba(45, 212, 191, 0.35);
+  }
+}
+
+.animate-glow-pulse {
+  animation: snyzer-pulse-glow 2s ease-in-out infinite;
+}
+
+/* Subtle themed scrollbar. */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #0d2838;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #14b8a6;
 }

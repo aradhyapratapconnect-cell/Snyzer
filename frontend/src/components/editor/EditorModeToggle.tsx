@@ -26,7 +26,7 @@ export function EditorModeToggle({
     <div
       role="group"
       aria-label="Editor mode"
-      className="inline-flex rounded-lg border border-line-light bg-muted-light/50 p-1 dark:border-line-dark dark:bg-muted-dark/30"
+      className="inline-flex rounded-full border border-teal-500/25 bg-teal-950/40 p-1"
     >
       {MODES.map((option) => (
         <button
@@ -38,10 +38,10 @@ export function EditorModeToggle({
             onChange(option.value);
           }}
           className={cn(
-            'rounded-md px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50',
+            'rounded-full px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 disabled:opacity-50',
             mode === option.value
-              ? 'bg-surface-light text-ink-light shadow-sm dark:bg-surface-dark dark:text-ink-dark'
-              : 'text-subink-light hover:text-ink-light dark:text-subink-dark dark:hover:text-ink-dark',
+              ? 'bg-teal-400/20 text-teal-200 shadow-[0_0_12px_rgba(45,212,191,0.25)]'
+              : 'text-slate-400 hover:text-teal-200',
           )}
         >
           {option.label}
