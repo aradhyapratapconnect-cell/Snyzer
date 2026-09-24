@@ -5,7 +5,7 @@ import { Input } from '../ui/input.js';
 import { Label } from '../ui/label.js';
 import { Spinner } from '../ui/spinner.js';
 import { toast } from '../ui/toaster.js';
-import { apiRequest } from '../../lib/apiClient.js';
+import { deleteAccount } from '../../api/account.js';
 import { useAuthStore } from '../../stores/useAuthStore.js';
 
 /**
@@ -60,7 +60,7 @@ export function DeleteAccountModal({ open, onClose }: { open: boolean; onClose: 
     setDeleting(true);
     setError(null);
     try {
-      await apiRequest('/account', { method: 'DELETE' });
+      await deleteAccount();
       await signOut();
       onClose();
       toast.success('Your account and all of its data have been permanently deleted.');

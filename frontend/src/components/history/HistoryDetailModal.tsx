@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Analysis } from '@snyzer/shared';
 import { AnalysisPanel } from '../analysis/AnalysisPanel.js';
 import { Button } from '../ui/button.js';
 import {
@@ -13,7 +12,7 @@ import {
 } from '../ui/dialog.js';
 import { Skeleton } from '../ui/skeleton.js';
 import { toast } from '../ui/toaster.js';
-import { apiRequest } from '../../lib/apiClient.js';
+import { deleteWritingJob, getWritingJob, type HistoryJobDetail } from '../../api/history.js';
 import { useWorkspaceStore } from '../../stores/useWorkspaceStore.js';
 
 /**
@@ -25,17 +24,6 @@ import { useWorkspaceStore } from '../../stores/useWorkspaceStore.js';
  * parent to drop the card without a refetch). Focus trap and Escape come
  * from the Dialog primitive.
  */
-interface JobDetail {
-  id: string;
-  input_text: string;
-  output_text: string | null;
-  mode: string;
-  tone: string;
-  analysis: Analysis | null;
-  status: string;
-  created_at: string;
-}
-
 export function HistoryDetailModal({
   jobId,
   onClose,
@@ -47,7 +35,7 @@ export function HistoryDetailModal({
 }) {
   const navigate = useNavigate();
   const setInputText = useWorkspaceStore((state) => state.setInputText);
-  const [job, setJob] = useState<JobDetail | null>(null);
+  const [job, setJob] = useState<HistoryJobDetail | null>(null);
   const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [deleting, setDeleting] = useState(false);
 
@@ -58,7 +46,7 @@ export function HistoryDetailModal({
     let live = true;
     setJob(null);
     setStatus('loading');
-    void apiRequest<{ job: JobDetail }>(`/writing/jobs/${jobId}`)
+    void getWritingJob(jobId)
       .then((response) => {
         if (live) {
           setJob(response.job);
@@ -81,7 +69,7 @@ export function HistoryDetailModal({
     }
     setDeleting(true);
     try {
-      await apiRequest(`/writing/jobs/${jobId}`, { method: 'DELETE' });
+      await deleteWritingJob(jobId);
       toast.success('Deleted from history.');
       onDeleted(jobId);
       onClose();

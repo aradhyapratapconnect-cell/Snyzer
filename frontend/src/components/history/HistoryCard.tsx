@@ -1,20 +1,13 @@
 import { Badge } from '../ui/badge.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card.js';
+import type { HistoryJobSummary } from '../../api/history.js';
 
 /**
  * History item card (SNZ-050). Summary view of one past job: date, mode and
  * tone badges, status, and a truncated preview. Selection opens the detail
- * dialog (SNZ-051).
+ * dialog (SNZ-051). The summary shape is owned by the history API module.
  */
-export interface HistoryJobSummary {
-  id: string;
-  input_preview: string;
-  output_preview: string | null;
-  mode: string;
-  tone: string;
-  status: string;
-  created_at: string;
-}
+export type { HistoryJobSummary };
 
 export function formatJobDate(iso: string): string {
   const date = new Date(iso);

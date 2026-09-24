@@ -1,12 +1,12 @@
 import { useEffect, useRef } from 'react';
 import type { WritingJobRequest } from '@snyzer/shared';
-import { getSupabaseClient } from '../lib/supabase.js';
+import { openWritingStream } from '../api/writing.js';
 import type { WorkspaceError, WorkspaceResult } from '../stores/useWorkspaceStore.js';
 
 /**
  * Streaming revision reader (SNZ-061).
  *
- * POSTs to `/api/v1/writing/jobs/stream` and parses the SSE event stream:
+ * Parses the SSE event stream opened by the writing API:
  * `token` deltas flow to `onToken` for progressive rendering, `done` carries
  * the validated persisted job to `onDone`, and `error` carries the standard
  * envelope to `onError`. Any transport-level failure (unreachable SSE
@@ -14,8 +14,6 @@ import type { WorkspaceError, WorkspaceResult } from '../stores/useWorkspaceStor
  * endpoint via `fallback` — the workspace keeps working where SSE is
  * blocked, and existing behavior is preserved byte-for-byte there.
  */
-const STREAM_PATH = '/api/v1/writing/jobs/stream';
-
 interface StreamedJob {
   id: string;
   status: string;
@@ -78,39 +76,16 @@ export function useStreamingRevision(options: {
       }
       active.current = true;
       try {
-        // Session lookup is best-effort: without env or a session the stream
-        // attempt simply goes out unauthenticated and the backend answers
-        // 401, which routes to the synchronous fallback like any failure.
-        let accessToken: string | undefined;
-        try {
-          const { data } = await getSupabaseClient().auth.getSession();
-          accessToken = data.session?.access_token ?? undefined;
-        } catch {
-          accessToken = undefined;
-        }
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (accessToken !== undefined && accessToken !== '') {
-          headers['Authorization'] = `Bearer ${accessToken}`;
-        }
         const controller = new AbortController();
         aborter.current = controller;
-        let response: Response;
+        let stream: ReadableStream<Uint8Array>;
         try {
-          response = await fetch(STREAM_PATH, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(body),
-            signal: controller.signal,
-          });
+          stream = await openWritingStream(body, controller.signal);
         } catch {
           await callbacks.current.fallback();
           return;
         }
-        if (!response.ok || response.body === null) {
-          await callbacks.current.fallback();
-          return;
-        }
-        const reader = response.body.getReader();
+        const reader = stream.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
         let completed = false;

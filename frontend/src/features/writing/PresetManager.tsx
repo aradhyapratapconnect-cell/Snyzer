@@ -4,7 +4,8 @@ import { MAX_PRESETS_PER_USER } from '@snyzer/shared';
 import { Button } from '../../components/ui/button.js';
 import { Input } from '../../components/ui/input.js';
 import { Label } from '../../components/ui/label.js';
-import { ApiClientError, apiRequest } from '../../lib/apiClient.js';
+import { ApiClientError } from '../../lib/apiClient.js';
+import { createPreset, deletePreset, fetchPresets } from '../../api/presets.js';
 import type { WritingControlValues } from './WritingControls.js';
 
 /**
@@ -15,12 +16,9 @@ import type { WritingControlValues } from './WritingControls.js';
  * the backend on mount so presets persist across logins; the parent owns the
  * live control state and receives applied values through `onApply`.
  */
-interface PresetsResponse {
-  presets: Preset[];
-}
-
-interface PresetResponse {
-  preset: Preset;
+interface PresetManagerProps {
+  current: WritingControlValues;
+  onApply: (values: WritingControlValues) => void;
 }
 
 function friendlyError(error: unknown): string {
@@ -30,13 +28,7 @@ function friendlyError(error: unknown): string {
   return 'Something went wrong. Please try again.';
 }
 
-export function PresetManager({
-  current,
-  onApply,
-}: {
-  current: WritingControlValues;
-  onApply: (values: WritingControlValues) => void;
-}) {
+export function PresetManager({ current, onApply }: PresetManagerProps) {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [name, setName] = useState('');
   const [status, setStatus] = useState<'loading' | 'ready'>('loading');
@@ -45,7 +37,7 @@ export function PresetManager({
 
   useEffect(() => {
     let live = true;
-    void apiRequest<PresetsResponse>('/presets')
+    void fetchPresets()
       .then((response) => {
         if (live) {
           setPresets(response.presets);
@@ -72,10 +64,7 @@ export function PresetManager({
     setSaving(true);
     setError(null);
     try {
-      const response = await apiRequest<PresetResponse>('/presets', {
-        method: 'POST',
-        body: { name: name.trim(), ...current },
-      });
+      const response = await createPreset({ name: name.trim(), ...current });
       setPresets((previous) => [response.preset, ...previous]);
       setName('');
     } catch (requestError) {
@@ -88,7 +77,7 @@ export function PresetManager({
   const handleDelete = async (id: string): Promise<void> => {
     setError(null);
     try {
-      await apiRequest(`/presets/${id}`, { method: 'DELETE' });
+      await deletePreset(id);
       setPresets((previous) => previous.filter((preset) => preset.id !== id));
     } catch (requestError) {
       setError(friendlyError(requestError));

@@ -7,7 +7,8 @@ import type {
   WorkspaceLayout,
 } from '@snyzer/shared';
 import { create } from 'zustand';
-import { ApiClientError, apiRequest } from '../lib/apiClient.js';
+import { ApiClientError } from '../lib/apiClient.js';
+import { fetchPreferences, savePreferences } from '../api/preferences.js';
 
 /**
  * User preferences store (SNZ-032).
@@ -33,10 +34,6 @@ export const defaultPreferences: UserPreferences = {
   defaultTone: 'professional',
 };
 
-interface PreferencesResponse {
-  preferences: UserPreferences;
-}
-
 function loadErrorMessage(error: unknown): string {
   if (error instanceof ApiClientError && error.code === 'NETWORK_ERROR') {
     return 'Could not reach the server.';
@@ -61,7 +58,7 @@ export const usePreferencesStore = create<PreferencesState>()((set, get) => ({
   loadPreferences: async () => {
     set({ status: 'loading', error: null });
     try {
-      const { preferences } = await apiRequest<PreferencesResponse>('/preferences');
+      const { preferences } = await fetchPreferences();
       set({ ...preferences, status: 'idle' });
     } catch (error) {
       set({ status: 'error', error: loadErrorMessage(error) });
@@ -76,10 +73,7 @@ export const usePreferencesStore = create<PreferencesState>()((set, get) => ({
     };
     set({ ...patch, status: 'saving', error: null });
     try {
-      const { preferences } = await apiRequest<PreferencesResponse>('/preferences', {
-        method: 'PATCH',
-        body: patch,
-      });
+      const { preferences } = await savePreferences(patch);
       set({ ...preferences, status: 'idle' });
     } catch (error) {
       set({ ...previous, status: 'error', error: saveErrorMessage(error) });

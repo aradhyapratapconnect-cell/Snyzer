@@ -5,7 +5,7 @@ import { HistoryCard, type HistoryJobSummary } from '../../components/history/Hi
 import { HistoryDetailModal } from '../../components/history/HistoryDetailModal.js';
 import { Button } from '../../components/ui/button.js';
 import { Skeleton } from '../../components/ui/skeleton.js';
-import { apiRequest } from '../../lib/apiClient.js';
+import { listWritingJobs } from '../../api/history.js';
 import { cn } from '../../lib/utils.js';
 
 /**
@@ -21,13 +21,6 @@ const PAGE_SIZE = 20;
 
 const TONE_FILTERS = ['all', 'professional', 'casual', 'academic', 'direct'] as const;
 
-interface HistoryResponse {
-  jobs: HistoryJobSummary[];
-  total: number;
-  limit: number;
-  offset: number;
-}
-
 export function HistoryPage() {
   const [jobs, setJobs] = useState<HistoryJobSummary[]>([]);
   const [total, setTotal] = useState(0);
@@ -41,9 +34,7 @@ export function HistoryPage() {
     setStatus('loading');
     setError(null);
     try {
-      const response = await apiRequest<HistoryResponse>(
-        `/writing/jobs?limit=${PAGE_SIZE}&offset=${nextOffset}`,
-      );
+      const response = await listWritingJobs(PAGE_SIZE, nextOffset);
       setJobs(response.jobs);
       setTotal(response.total);
       setOffset(nextOffset);

@@ -1,7 +1,8 @@
-import type { Analysis, EditorMode, Tone, WritingJobResponse, WritingMode } from '@snyzer/shared';
+import type { Analysis, EditorMode, Tone, WritingMode } from '@snyzer/shared';
 import { MAX_INPUT_TEXT_LENGTH } from '@snyzer/shared';
 import { create } from 'zustand';
-import { ApiClientError, apiRequest } from '../lib/apiClient.js';
+import { ApiClientError } from '../lib/apiClient.js';
+import { createWritingJob } from '../api/writing.js';
 import { useAnnouncerStore } from '../hooks/useAnnouncer.js';
 import { usePreferencesStore } from './usePreferencesStore.js';
 
@@ -124,15 +125,12 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
     set({ isProcessing: true, activeError: null, streamingText: null });
     useAnnouncerStore.getState().announce('Improving text, please wait.');
     try {
-      const response = await apiRequest<WritingJobResponse>('/writing/jobs', {
-        method: 'POST',
-        body: {
-          inputText: state.inputText,
-          mode: state.selectedMode,
-          tone: state.selectedTone,
-          editorMode: state.editorMode,
-          preferences: state.targets,
-        },
+      const response = await createWritingJob({
+        inputText: state.inputText,
+        mode: state.selectedMode,
+        tone: state.selectedTone,
+        editorMode: state.editorMode,
+        preferences: state.targets,
       });
       set({
         currentResult: {
