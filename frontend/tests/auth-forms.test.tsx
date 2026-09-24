@@ -13,15 +13,26 @@ import { WorkspacePage } from '../src/app/WorkspacePage.js';
 const mocks = vi.hoisted(() => ({
   signUp: vi.fn(),
   signInWithPassword: vi.fn(),
+  resend: vi.fn(),
 }));
 
 vi.mock('../src/lib/supabase.js', () => ({
   getSupabaseClient: () => ({
-    auth: { signUp: mocks.signUp, signInWithPassword: mocks.signInWithPassword },
+    auth: {
+      signUp: mocks.signUp,
+      signInWithPassword: mocks.signInWithPassword,
+      resend: mocks.resend,
+    },
   }),
 }));
 
-const okResponse = { data: { user: { id: 'user-1' }, session: null }, error: null };
+const okResponse = {
+  data: {
+    user: { id: 'user-1' },
+    session: { access_token: 'token', user: { id: 'user-1' } },
+  },
+  error: null,
+};
 
 function renderAt(path: '/login' | '/register') {
   return render(
@@ -49,6 +60,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.signUp.mockResolvedValue(okResponse);
   mocks.signInWithPassword.mockResolvedValue(okResponse);
+  mocks.resend.mockResolvedValue({ data: {}, error: null });
 });
 
 describe('RegisterForm', () => {
@@ -99,6 +111,7 @@ describe('RegisterForm', () => {
       expect(mocks.signUp).toHaveBeenCalledWith({
         email: 'ada@example.com',
         password: 'password123',
+        options: { emailRedirectTo: window.location.origin },
       });
     });
     expect(await screen.findByRole('heading', { name: 'Workspace' })).toBeInTheDocument();
@@ -116,6 +129,56 @@ describe('RegisterForm', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText('User already registered')).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Workspace' })).not.toBeInTheDocument();
+  });
+
+  it('shows a confirmation notice instead of navigating when no session is issued', async () => {
+    const user = userEvent.setup();
+    mocks.signUp.mockResolvedValue({
+      data: { user: { id: 'user-1' }, session: null },
+      error: null,
+    });
+    renderAt('/register');
+
+    await fillAndSubmit(user, 'ada@example.com', 'password123');
+
+    expect(await screen.findByRole('heading', { name: 'Check your inbox' })).toBeInTheDocument();
+    expect(screen.getByText(/ada@example.com/)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Workspace' })).not.toBeInTheDocument();
+  });
+
+  it('resends the confirmation link from the inbox notice', async () => {
+    const user = userEvent.setup();
+    mocks.signUp.mockResolvedValue({
+      data: { user: { id: 'user-1' }, session: null },
+      error: null,
+    });
+    renderAt('/register');
+
+    await fillAndSubmit(user, 'ada@example.com', 'password123');
+    await user.click(await screen.findByRole('button', { name: 'Resend confirmation link' }));
+
+    expect(mocks.resend).toHaveBeenCalledWith({ type: 'signup', email: 'ada@example.com' });
+    expect(
+      await screen.findByText('Confirmation link sent. Check your inbox.'),
+    ).toBeInTheDocument();
+  });
+
+  it('reports resend failures without leaving the inbox notice', async () => {
+    const user = userEvent.setup();
+    mocks.signUp.mockResolvedValue({
+      data: { user: { id: 'user-1' }, session: null },
+      error: null,
+    });
+    mocks.resend.mockResolvedValue({ data: {}, error: { message: 'rate limited' } });
+    renderAt('/register');
+
+    await fillAndSubmit(user, 'ada@example.com', 'password123');
+    await user.click(await screen.findByRole('button', { name: 'Resend confirmation link' }));
+
+    expect(
+      await screen.findByText('Could not resend the confirmation link. Please try again.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Check your inbox' })).toBeInTheDocument();
   });
 
   it('disables the submit button with a spinner while the request is in flight', async () => {

@@ -118,6 +118,19 @@ describe('useAuthStore', () => {
     expect(mocks.onAuthStateChange).toHaveBeenCalledTimes(1);
   });
 
+  it('treats a failed session fetch as signed out instead of hanging', async () => {
+    mocks.getSession.mockRejectedValue(new Error('network down'));
+
+    await useAuthStore.getState().initialize();
+    const state = useAuthStore.getState();
+
+    expect(state.isInitialized).toBe(true);
+    expect(state.isAuthenticated).toBe(false);
+    expect(state.user).toBeNull();
+    expect(state.session).toBeNull();
+    expect(mocks.onAuthStateChange).toHaveBeenCalledTimes(1);
+  });
+
   it('never references secret credentials in the client module', async () => {
     const raw = await readFile(
       join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'lib', 'supabase.ts'),

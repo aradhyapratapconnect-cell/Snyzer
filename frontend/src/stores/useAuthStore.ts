@@ -48,8 +48,14 @@ export const useAuthStore = create<AuthState>()((set) => ({
     }
     initialized = true;
     const supabase = getSupabaseClient();
-    const { data } = await supabase.auth.getSession();
-    set({ ...applySession(data.session), isInitialized: true });
+    try {
+      const { data } = await supabase.auth.getSession();
+      set({ ...applySession(data.session), isInitialized: true });
+    } catch {
+      // A failed session fetch must not trap the app on the loading state;
+      // treat it as signed out and let the guards prompt re-authentication.
+      set({ isInitialized: true, isAuthenticated: false, user: null, session: null });
+    }
     supabase.auth.onAuthStateChange((_event, session) => {
       set(applySession(session));
     });

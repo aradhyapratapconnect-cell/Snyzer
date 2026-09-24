@@ -23,7 +23,13 @@ vi.mock('../src/lib/supabase.js', () => ({
   }),
 }));
 
-const okResponse = { data: { user: { id: 'user-1' }, session: null }, error: null };
+const okResponse = {
+  data: {
+    user: { id: 'user-1' },
+    session: { access_token: 'token', user: { id: 'user-1' } },
+  },
+  error: null,
+};
 
 function signedInState() {
   const user = { id: 'user-1', email: 'ada@example.com' } as User;

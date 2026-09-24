@@ -16,6 +16,12 @@ import { registerSchema, type RegisterFormValues } from './schemas.js';
  * Registration form (SNZ-013). Validates email/password client-side, creates
  * the account via Supabase Auth, and navigates to the workspace on success.
  * Server failures map to friendly messages; raw provider text never renders.
+ *
+ * Email confirmation: the signup request carries `emailRedirectTo` derived
+ * from the running origin (never a hardcoded host), so confirmation links
+ * return to this deployment. When Supabase requires confirmation before
+ * issuing a session, the form shows an inbox notice with a resend action
+ * instead of navigating to a guarded route that would bounce.
  */
 function toFriendlyError(message: string): string {
   if (message.toLowerCase().includes('already registered')) {
@@ -28,6 +34,10 @@ export function RegisterForm() {
   const navigate = useNavigate();
   const location = useLocation();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
+  const [resendNotice, setResendNotice] = useState<string | null>(null);
+  const [resendError, setResendError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -40,12 +50,17 @@ export function RegisterForm() {
   const onSubmit = async (values: RegisterFormValues): Promise<void> => {
     setServerError(null);
     try {
-      const { error } = await getSupabaseClient().auth.signUp({
+      const { data, error } = await getSupabaseClient().auth.signUp({
         email: values.email,
         password: values.password,
+        options: { emailRedirectTo: window.location.origin },
       });
       if (error !== null) {
         setServerError(toFriendlyError(error.message));
+        return;
+      }
+      if (data.session === null) {
+        setConfirmationEmail(values.email);
         return;
       }
       navigate(resolvePostAuthRedirect(location.state), { replace: true });
@@ -53,6 +68,81 @@ export function RegisterForm() {
       setServerError('Something went wrong. Please try again.');
     }
   };
+
+  const handleResend = async (): Promise<void> => {
+    if (confirmationEmail === null || resending) {
+      return;
+    }
+    setResending(true);
+    setResendNotice(null);
+    setResendError(null);
+    try {
+      const { error } = await getSupabaseClient().auth.resend({
+        type: 'signup',
+        email: confirmationEmail,
+      });
+      if (error !== null) {
+        setResendError('Could not resend the confirmation link. Please try again.');
+        return;
+      }
+      setResendNotice('Confirmation link sent. Check your inbox.');
+    } catch {
+      setResendError('Could not resend the confirmation link. Please try again.');
+    } finally {
+      setResending(false);
+    }
+  };
+
+  if (confirmationEmail !== null) {
+    return (
+      <AuthCard
+        title="Check your inbox"
+        subtitle={`We sent a confirmation link to ${confirmationEmail}. Confirm your email to finish creating your account.`}
+        footer={
+          <>
+            Wrong address? <AuthLink to="/register">Try again</AuthLink>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div
+            role="status"
+            className="rounded-lg border border-line-light bg-muted-light p-3 text-sm text-ink-light dark:border-line-dark dark:bg-muted-dark dark:text-ink-dark"
+          >
+            The link expires soon. Open it on this device, then sign in.
+          </div>
+          {resendNotice !== null && (
+            <div
+              role="status"
+              className="rounded-lg border border-line-light bg-muted-light p-3 text-sm text-ink-light dark:border-line-dark dark:bg-muted-dark dark:text-ink-dark"
+            >
+              {resendNotice}
+            </div>
+          )}
+          {resendError !== null && (
+            <div
+              role="alert"
+              className="rounded-lg border border-line-light bg-muted-light p-3 text-sm text-ink-light dark:border-line-dark dark:bg-muted-dark dark:text-ink-dark"
+            >
+              {resendError}
+            </div>
+          )}
+          <Button
+            type="button"
+            disabled={resending}
+            onClick={() => void handleResend()}
+            className="w-full bg-[#091e3a] font-semibold text-white hover:bg-[#0d2a52] dark:bg-teal-400 dark:text-slate-950 dark:hover:bg-teal-300"
+          >
+            {resending && <Spinner />}
+            {resending ? 'Sending…' : 'Resend confirmation link'}
+          </Button>
+          <p className="text-center text-sm">
+            <AuthLink to="/login">Back to sign in</AuthLink>
+          </p>
+        </div>
+      </AuthCard>
+    );
+  }
 
   return (
     <AuthCard
