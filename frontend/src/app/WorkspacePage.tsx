@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { EditorMode } from '@snyzer/shared';
 import { MAX_INPUT_TEXT_LENGTH } from '@snyzer/shared';
-import { FileText, Sparkles } from 'lucide-react';
+import { FileText, Lock, Sparkles } from 'lucide-react';
 import { EditorModeToggle } from '../components/editor/EditorModeToggle.js';
 import { PlainEditor } from '../components/editor/PlainEditor.js';
 import { RichEditor } from '../components/editor/RichEditor.js';
@@ -203,6 +203,13 @@ export function WorkspacePage() {
               )}
             />
             {STATUS_LABELS[status]}
+          </span>
+          <span
+            title="Every revision preserves your draft's meaning and intent."
+            className="font-code inline-flex items-center gap-1.5 rounded-full border border-teal-500/25 bg-teal-950/40 px-3 py-1.5 text-xs font-semibold text-teal-200/90"
+          >
+            <Lock className="h-3.5 w-3.5 text-teal-400" aria-hidden="true" />
+            Intent lock · Always on
           </span>
           <EditorModeToggle mode={editorMode} onChange={handleModeChange} disabled={isProcessing} />
         </div>

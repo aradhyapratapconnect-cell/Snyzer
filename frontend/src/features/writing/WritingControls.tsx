@@ -9,13 +9,16 @@ import {
 } from '../../components/ui/select.js';
 import { Slider } from '../../components/ui/slider.js';
 import { cn } from '../../lib/utils.js';
+import { INTENSITIES, INTENSITY_TARGETS, intensityOf } from './intensity.js';
 
 /**
  * Writing controls panel (SNZ-044).
  *
- * Presentational toolbar: improvement mode, target tone, and numeric style
- * targets. Values flow in, changes flow out — the workspace store (SNZ-046)
- * owns state. Selectors are labelled, keyboard-operable controls.
+ * Presentational toolbar: improvement mode, target tone, revision intensity
+ * (an honest shortcut that sets the numeric style targets below), and the
+ * numeric targets themselves. Values flow in, changes flow out — the
+ * workspace store (SNZ-046) owns state. Selectors are labelled,
+ * keyboard-operable controls.
  */
 export interface WritingControlValues {
   mode: WritingMode;
@@ -47,6 +50,7 @@ export function WritingControls({
   onChange: (values: WritingControlValues) => void;
   disabled?: boolean;
 }) {
+  const intensity = intensityOf(values.clarity, values.sentenceVariety);
   return (
     <div className="space-y-4">
       <div>
@@ -96,6 +100,50 @@ export function WritingControls({
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between">
+          <span id="intensity-label" className="text-sm font-medium text-slate-200">
+            Intensity
+          </span>
+          {intensity === 'custom' && (
+            <span className="font-code text-xs text-slate-400" aria-live="polite">
+              Custom
+            </span>
+          )}
+        </div>
+        <div
+          role="group"
+          aria-labelledby="intensity-label"
+          className="mt-1.5 flex flex-wrap gap-1.5"
+        >
+          {INTENSITIES.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={intensity === option.value}
+              title={option.detail}
+              disabled={disabled}
+              onClick={() => {
+                const targets = INTENSITY_TARGETS[option.value];
+                onChange({
+                  ...values,
+                  clarity: targets.clarity,
+                  sentenceVariety: targets.sentenceVariety,
+                });
+              }}
+              className={cn(
+                'rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 disabled:opacity-50 active:scale-95',
+                intensity === option.value
+                  ? 'border-teal-400/50 bg-teal-400/15 text-teal-200 shadow-[0_0_12px_rgba(45,212,191,0.2)]'
+                  : 'border-teal-500/20 bg-teal-950/30 text-slate-300 hover:border-teal-400/40 hover:text-teal-200',
+              )}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div>
