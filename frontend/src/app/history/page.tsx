@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Clock, FileText } from 'lucide-react';
+import { ArrowRight, Clock, FileText, Search } from 'lucide-react';
 import { HistoryCard, type HistoryJobSummary } from '../../components/history/HistoryCard.js';
 import { HistoryDetailModal } from '../../components/history/HistoryDetailModal.js';
 import { Button } from '../../components/ui/button.js';
+import { Input } from '../../components/ui/input.js';
 import { Skeleton } from '../../components/ui/skeleton.js';
 import { listWritingJobs } from '../../api/history.js';
 import { cn } from '../../lib/utils.js';
@@ -15,7 +16,9 @@ import { cn } from '../../lib/utils.js';
  * dual-preview cards) over the real server-side history: paginated past jobs
  * with loading skeletons, an empty state, and a detail dialog per card.
  * Deletions update the list in place (filter + count decrement) without a
- * refetch. The tone filter applies client-side to the loaded page.
+ * refetch. The tone filter and text search apply client-side to the loaded
+ * page — the list endpoint offers pagination only, so both are honestly
+ * labelled as page-scoped.
  */
 const PAGE_SIZE = 20;
 
@@ -29,6 +32,7 @@ export function HistoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toneFilter, setToneFilter] = useState<(typeof TONE_FILTERS)[number]>('all');
+  const [query, setQuery] = useState('');
 
   const load = useCallback(async (nextOffset: number) => {
     setStatus('loading');
@@ -51,10 +55,21 @@ export function HistoryPage() {
     void load(0);
   }, [load]);
 
-  const visibleJobs = useMemo(
-    () => (toneFilter === 'all' ? jobs : jobs.filter((job) => job.tone === toneFilter)),
-    [jobs, toneFilter],
-  );
+  const visibleJobs = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return jobs.filter((job) => {
+      if (toneFilter !== 'all' && job.tone !== toneFilter) {
+        return false;
+      }
+      if (needle === '') {
+        return true;
+      }
+      const haystacks = [job.input_preview, job.output_preview ?? '', job.mode, job.tone];
+      return haystacks.some((haystack) => haystack.toLowerCase().includes(needle));
+    });
+  }, [jobs, toneFilter, query]);
+
+  const filtering = toneFilter !== 'all' || query.trim() !== '';
 
   const page = Math.floor(offset / PAGE_SIZE) + 1;
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -76,6 +91,25 @@ export function HistoryPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-500"
+              aria-hidden="true"
+            />
+            <label htmlFor="history-search" className="sr-only">
+              Search this page
+            </label>
+            <Input
+              id="history-search"
+              type="search"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+              }}
+              placeholder="Search this page…"
+              className="w-52 bg-slate-900/90 pl-9 text-slate-100 placeholder:text-slate-500"
+            />
+          </div>
           <div
             role="group"
             aria-label="Filter by tone"
@@ -162,9 +196,9 @@ export function HistoryPage() {
 
       {status === 'ready' && jobs.length > 0 && visibleJobs.length === 0 && (
         <div className="rounded-3xl border border-slate-800 bg-[#07131e]/50 p-12 text-center">
-          <h2 className="text-lg font-bold text-white">No entries match this tone filter</h2>
+          <h2 className="text-lg font-bold text-white">No entries match your filters</h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-slate-400">
-            Try a different tone, or clear the filter to see this page again.
+            Try a different search or tone — filters apply to this page only.
           </p>
           <Button
             type="button"
@@ -172,16 +206,22 @@ export function HistoryPage() {
             size="sm"
             className="mt-4"
             onClick={() => {
+              setQuery('');
               setToneFilter('all');
             }}
           >
-            Show all tones
+            Clear search and filters
           </Button>
         </div>
       )}
 
       {status === 'ready' && visibleJobs.length > 0 && (
         <>
+          {filtering && (
+            <p className="mb-4 text-xs text-slate-400" aria-live="polite">
+              Showing {visibleJobs.length} of {jobs.length} entries on this page.
+            </p>
+          )}
           <ul className="space-y-6">
             {visibleJobs.map((job) => (
               <li key={job.id}>
