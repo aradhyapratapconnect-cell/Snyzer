@@ -22,6 +22,8 @@ import { fetchPreferences, savePreferences } from '../api/preferences.js';
 export interface PreferencesState extends UserPreferences {
   status: 'idle' | 'loading' | 'saving' | 'error';
   error: string | null;
+  /** True once values have been confirmed against the server this session. */
+  loaded: boolean;
   loadPreferences: () => Promise<void>;
   updatePreferences: (patch: UserPreferencesUpdate) => Promise<void>;
   clearError: () => void;
@@ -55,11 +57,12 @@ export const usePreferencesStore = create<PreferencesState>()((set, get) => ({
   ...defaultPreferences,
   status: 'idle',
   error: null,
+  loaded: false,
   loadPreferences: async () => {
     set({ status: 'loading', error: null });
     try {
       const { preferences } = await fetchPreferences();
-      set({ ...preferences, status: 'idle' });
+      set({ ...preferences, status: 'idle', loaded: true });
     } catch (error) {
       set({ status: 'error', error: loadErrorMessage(error) });
     }
@@ -74,7 +77,7 @@ export const usePreferencesStore = create<PreferencesState>()((set, get) => ({
     set({ ...patch, status: 'saving', error: null });
     try {
       const { preferences } = await savePreferences(patch);
-      set({ ...preferences, status: 'idle' });
+      set({ ...preferences, status: 'idle', loaded: true });
     } catch (error) {
       set({ ...previous, status: 'error', error: saveErrorMessage(error) });
     }

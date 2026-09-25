@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Session, User } from '@supabase/supabase-js';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { SettingsPage } from '../src/app/settings/page.js';
 import { GettingStarted } from '../src/app/router.js';
 import { Toaster } from '../src/components/ui/toaster.js';
 import { useAuthStore } from '../src/stores/useAuthStore.js';
+import { usePreferencesStore } from '../src/stores/usePreferencesStore.js';
 
 /**
  * SNZ-034 component tests (SNZ-039 toast): settings content,
@@ -77,6 +78,39 @@ describe('SettingsPage', () => {
     expect(screen.getByText('FREE_USER')).toBeInTheDocument();
     expect(screen.getByLabelText('Theme')).toBeInTheDocument();
   });
+
+  it('hydrates workspace defaults from the server on mount', async () => {
+    apiRequestMock.mockImplementation(async (path: string) => {
+      if (path === '/preferences') {
+        return {
+          preferences: {
+            theme: 'dark',
+            workspaceLayout: 'input_first',
+            editorMode: 'rich',
+            defaultTone: 'casual',
+          },
+        };
+      }
+      return {};
+    });
+    usePreferencesStore.setState({
+      theme: 'system',
+      workspaceLayout: 'side_by_side',
+      editorMode: 'plain',
+      defaultTone: 'professional',
+      status: 'idle',
+      error: null,
+      loaded: false,
+    });
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Default tone')).toHaveValue('casual');
+    });
+    expect(screen.getByLabelText('Editor')).toHaveValue('rich');
+    expect(screen.getByLabelText('Layout')).toHaveValue('input_first');
+    expect(usePreferencesStore.getState().loaded).toBe(true);
+  });
 });
 
 describe('DeleteAccountModal', () => {
@@ -105,12 +139,14 @@ describe('DeleteAccountModal', () => {
 
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(apiRequestMock).not.toHaveBeenCalled();
+    // Mount hydration may issue GET /preferences; what matters here is that
+    // dismissing never triggers the destructive call.
+    expect(apiRequestMock).not.toHaveBeenCalledWith('/account', expect.anything());
 
     await user.click(screen.getByRole('button', { name: 'Delete account' }));
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(apiRequestMock).not.toHaveBeenCalled();
+    expect(apiRequestMock).not.toHaveBeenCalledWith('/account', expect.anything());
   });
 
   it('deletes, signs out, toasts, and lands home', async () => {

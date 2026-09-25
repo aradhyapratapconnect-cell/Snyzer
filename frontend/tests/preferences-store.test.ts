@@ -43,6 +43,7 @@ function resetStore() {
     ...defaultPreferences,
     status: 'idle',
     error: null,
+    loaded: false,
     loadPreferences: usePreferencesStore.getState().loadPreferences,
     updatePreferences: usePreferencesStore.getState().updatePreferences,
     clearError: usePreferencesStore.getState().clearError,
@@ -134,5 +135,27 @@ describe('usePreferencesStore', () => {
 
     expect(usePreferencesStore.getState().error).toBeNull();
     expect(usePreferencesStore.getState().status).toBe('idle');
+  });
+
+  it('marks values loaded after successful hydration or save', async () => {
+    apiRequestMock.mockResolvedValue({ preferences: serverPreferences });
+    await usePreferencesStore.getState().loadPreferences();
+    expect(usePreferencesStore.getState().loaded).toBe(true);
+
+    resetStore();
+    apiRequestMock.mockResolvedValue({ preferences: { ...serverPreferences, theme: 'light' } });
+    await usePreferencesStore.getState().updatePreferences({ theme: 'light' });
+    expect(usePreferencesStore.getState().loaded).toBe(true);
+  });
+
+  it('stays unloaded when hydration fails so later mounts retry', async () => {
+    apiRequestMock.mockRejectedValue(
+      new ApiClientError({ code: 'NETWORK_ERROR', message: 'down', status: 0 }),
+    );
+
+    await usePreferencesStore.getState().loadPreferences();
+
+    expect(usePreferencesStore.getState().loaded).toBe(false);
+    expect(usePreferencesStore.getState().status).toBe('error');
   });
 });

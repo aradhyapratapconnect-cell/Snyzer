@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { EditorMode, Tone, WorkspaceLayout } from '@snyzer/shared';
 import { Settings as SettingsIcon, SlidersHorizontal, User } from 'lucide-react';
 import { ThemeToggle } from '../../components/settings/ThemeToggle.js';
@@ -58,8 +58,18 @@ export function SettingsPage() {
   const workspaceLayout = usePreferencesStore((state) => state.workspaceLayout);
   const prefsStatus = usePreferencesStore((state) => state.status);
   const prefsError = usePreferencesStore((state) => state.error);
+  const prefsLoaded = usePreferencesStore((state) => state.loaded);
+  const loadPreferences = usePreferencesStore((state) => state.loadPreferences);
   const updatePreferences = usePreferencesStore((state) => state.updatePreferences);
   const clearPrefsError = usePreferencesStore((state) => state.clearError);
+
+  // Hydrate from the server on first visit (deep link / reload); the `loaded`
+  // guard skips the fetch when another page already hydrated this session.
+  useEffect(() => {
+    if (!prefsLoaded) {
+      void loadPreferences();
+    }
+  }, [prefsLoaded, loadPreferences]);
 
   return (
     <div className="w-full">
@@ -76,6 +86,11 @@ export function SettingsPage() {
           {prefsStatus === 'saving' && (
             <span className="font-code ml-2 text-xs text-teal-300" aria-live="polite">
               Saving…
+            </span>
+          )}
+          {prefsStatus === 'loading' && !prefsLoaded && (
+            <span className="font-code ml-2 text-xs text-teal-300" aria-live="polite">
+              Loading…
             </span>
           )}
         </p>
