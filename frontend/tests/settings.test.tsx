@@ -21,8 +21,9 @@ vi.mock('../src/lib/apiClient.js', () => ({
 }));
 
 const signOutMock = vi.fn();
+const updateUserMock = vi.fn();
 vi.mock('../src/lib/supabase.js', () => ({
-  getSupabaseClient: () => ({ auth: { signOut: signOutMock } }),
+  getSupabaseClient: () => ({ auth: { signOut: signOutMock, updateUser: updateUserMock } }),
 }));
 
 function signedInState() {
@@ -60,6 +61,7 @@ beforeEach(() => {
   );
   apiRequestMock.mockResolvedValue({});
   signOutMock.mockResolvedValue({ error: null });
+  updateUserMock.mockResolvedValue({ data: {}, error: null });
   useAuthStore.setState({
     ...signedInState(),
     signOut: async () => {
@@ -74,7 +76,7 @@ describe('SettingsPage', () => {
     renderSettings();
 
     expect(screen.getByText('ada@example.com')).toBeInTheDocument();
-    expect(screen.getByText('Ada')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Ada')).toBeInTheDocument();
     expect(screen.getByText('FREE_USER')).toBeInTheDocument();
     expect(screen.getByLabelText('Theme')).toBeInTheDocument();
   });
@@ -110,6 +112,47 @@ describe('SettingsPage', () => {
     expect(screen.getByLabelText('Editor')).toHaveValue('rich');
     expect(screen.getByLabelText('Layout')).toHaveValue('input_first');
     expect(usePreferencesStore.getState().loaded).toBe(true);
+  });
+
+  it('reflects the email verification status from the session', () => {
+    const { unmount } = renderSettings();
+    expect(screen.getByText('Pending confirmation')).toBeInTheDocument();
+    unmount();
+
+    const current = useAuthStore.getState().user as unknown as Record<string, unknown>;
+    useAuthStore.setState({
+      user: { ...current, email_confirmed_at: '2026-01-01T00:00:00.000Z' } as unknown as User,
+    });
+    renderSettings();
+    expect(screen.getByText('Confirmed')).toBeInTheDocument();
+    expect(screen.queryByText('Pending confirmation')).not.toBeInTheDocument();
+  });
+
+  it('saves the display name through Supabase with confirmation', async () => {
+    const user = userEvent.setup();
+    renderSettings();
+
+    await user.clear(screen.getByLabelText('Display name'));
+    await user.type(screen.getByLabelText('Display name'), 'Ada Lovelace');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(updateUserMock).toHaveBeenCalledWith({ data: { display_name: 'Ada Lovelace' } });
+    expect(await screen.findByText('Display name updated.')).toBeInTheDocument();
+  });
+
+  it('reports display-name failures without clearing the draft', async () => {
+    const user = userEvent.setup();
+    updateUserMock.mockResolvedValue({ data: {}, error: { message: 'boom' } });
+    renderSettings();
+
+    await user.clear(screen.getByLabelText('Display name'));
+    await user.type(screen.getByLabelText('Display name'), 'Ada Lovelace');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText('Could not update your display name. Please try again.'),
+    ).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Ada Lovelace')).toBeInTheDocument();
   });
 });
 

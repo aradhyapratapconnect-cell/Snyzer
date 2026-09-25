@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { EditorMode, Tone, WorkspaceLayout } from '@snyzer/shared';
 import { Settings as SettingsIcon, SlidersHorizontal, User } from 'lucide-react';
 import { ThemeToggle } from '../../components/settings/ThemeToggle.js';
+import { DisplayNameEditor } from '../../components/settings/DisplayNameEditor.js';
 import { DeleteAccountModal } from '../../components/settings/DeleteAccountModal.js';
 import { Button } from '../../components/ui/button.js';
 import { Label } from '../../components/ui/label.js';
@@ -28,6 +29,11 @@ function displayNameOf(
     return name;
   }
   return user?.email ?? '—';
+}
+
+function rawDisplayNameOf(user: { user_metadata?: Record<string, unknown> } | null): string | null {
+  const name = user?.user_metadata?.['display_name'];
+  return typeof name === 'string' && name !== '' ? name : null;
 }
 
 const TONE_OPTIONS: Array<{ value: Tone; label: string }> = [
@@ -172,8 +178,20 @@ export function SettingsPage() {
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-slate-400">Display name</dt>
-                <dd className="font-medium text-slate-100">{displayNameOf(user)}</dd>
+                <dt className="text-slate-400">Email status</dt>
+                <dd>
+                  {user?.email_confirmed_at !== undefined &&
+                  user?.email_confirmed_at !== null &&
+                  user.email_confirmed_at !== '' ? (
+                    <span className="font-code rounded-lg border border-emerald-500/30 bg-emerald-950/50 px-2.5 py-1 text-xs text-emerald-300">
+                      Confirmed
+                    </span>
+                  ) : (
+                    <span className="font-code rounded-lg border border-amber-500/30 bg-amber-950/50 px-2.5 py-1 text-xs text-amber-300">
+                      Pending confirmation
+                    </span>
+                  )}
+                </dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-slate-400">Plan</dt>
@@ -184,6 +202,10 @@ export function SettingsPage() {
                 </dd>
               </div>
             </dl>
+            <DisplayNameEditor
+              displayName={rawDisplayNameOf(user)}
+              effectiveName={displayNameOf(user)}
+            />
           </section>
 
           <section
