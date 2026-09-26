@@ -12,7 +12,10 @@ export function HomePage() {
   return (
     <div className="w-full">
       {/* Hero */}
-      <section className="relative flex min-h-[70vh] flex-col justify-center overflow-hidden py-16">
+      <section
+        aria-label="Getting started"
+        className="relative flex min-h-[70vh] flex-col justify-center overflow-hidden py-16"
+      >
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_70%_40%,rgba(45,212,191,0.12),transparent)]"

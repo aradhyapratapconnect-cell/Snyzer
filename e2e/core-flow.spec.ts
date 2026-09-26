@@ -81,7 +81,18 @@ function signupPayload() {
 
 /** Installs the Supabase + backend doubles and returns the shared mock state. */
 async function installMocks(page: Page, state: MockState): Promise<void> {
-  await page.route(`${SUPABASE_HOST}/auth/v1/signup`, async (route: Route) => {
+  // Glob tolerates GoTrue query params (e.g. `?redirect_to=` from signup
+  // options, `?grant_type=` on the token endpoint); the doubles answer any
+  // auth call with a synthetic session.
+  await page.route(`${SUPABASE_HOST}/auth/v1/signup*`, async (route: Route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(signupPayload()),
+    });
+  });
+
+  await page.route(`${SUPABASE_HOST}/auth/v1/token*`, async (route: Route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -222,6 +233,13 @@ async function registerAndEnterWorkspace(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Workspace' })).toBeVisible();
 }
 
+async function primaryNav(page: Page, name: string): Promise<void> {
+  await page
+    .getByRole('navigation', { name: 'Primary' })
+    .getByRole('link', { name, exact: true })
+    .click();
+}
+
 test.describe('core user flows', () => {
   test('Flow 1: sign up, improve in Formal mode, inspect revision and metrics', async ({
     page,
@@ -252,7 +270,10 @@ test.describe('core user flows', () => {
     await page.getByRole('button', { name: 'Copy', exact: true }).click();
     await expect(page.getByRole('button', { name: /Copied/ })).toBeVisible();
 
-    await page.getByRole('link', { name: 'History', exact: true }).click();
+    await page
+      .getByRole('navigation', { name: 'Primary' })
+      .getByRole('link', { name: 'History', exact: true })
+      .click();
     await expect(page).toHaveURL(/\/history$/);
     await expect(page.getByText(DRAFT.slice(0, 30))).toBeVisible();
 
@@ -271,7 +292,10 @@ test.describe('core user flows', () => {
     await installMocks(page, state);
     await registerAndEnterWorkspace(page);
 
-    await page.getByRole('link', { name: 'Settings', exact: true }).click();
+    await page
+      .getByRole('navigation', { name: 'Primary' })
+      .getByRole('link', { name: 'Settings', exact: true })
+      .click();
     await expect(page).toHaveURL(/\/settings$/);
     await page.getByLabel('Theme').selectOption('dark');
     await expect.poll(async () => state.lastPatchBody).toMatchObject({ theme: 'dark' });
@@ -289,5 +313,30 @@ test.describe('core user flows', () => {
 
     await page.getByRole('button', { name: 'Retry' }).click();
     await expect(page.getByText(REVISED)).toBeVisible();
+  });
+
+  test('Flow 4: sign out, sign back in, server preferences persist', async ({ page }) => {
+    const state = newState();
+    await installMocks(page, state);
+    await registerAndEnterWorkspace(page);
+
+    await primaryNav(page, 'Settings');
+    await expect(page).toHaveURL(/\/settings$/);
+    await page.getByLabel('Theme').selectOption('dark');
+    await expect.poll(async () => state.lastPatchBody).toMatchObject({ theme: 'dark' });
+
+    await page.getByRole('button', { name: 'Account menu' }).click();
+    await page.getByRole('menuitem', { name: 'Sign out' }).click();
+    await expect(page).toHaveURL(/\/login$/);
+
+    await page.getByLabel('Email').fill('e2e@example.com');
+    await page.getByRole('textbox', { name: 'Password' }).fill('correct-horse-12');
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page).toHaveURL(/\/workspace$/);
+    await expect(page.getByRole('heading', { name: 'Workspace' })).toBeVisible();
+
+    await primaryNav(page, 'Settings');
+    await expect(page.getByLabel('Theme')).toHaveValue('dark');
+    await expect(page.locator('html.dark')).toBeAttached();
   });
 });
