@@ -58,7 +58,7 @@ export function UserMenu() {
     typeof user?.user_metadata?.['display_name'] === 'string' &&
     user.user_metadata['display_name'] !== ''
       ? (user.user_metadata['display_name'] as string)
-      : (user?.email?.split('@')[0] ?? 'Researcher');
+      : (user?.email?.split('@')[0] ?? 'Account');
 
   const handleSignOut = async (): Promise<void> => {
     setSigningOut(true);
