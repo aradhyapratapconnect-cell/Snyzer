@@ -57,3 +57,16 @@ export function createApp(): Express {
 
   return app;
 }
+
+/**
+ * Vercel Express entrypoint (production).
+ *
+ * Vercel only recognizes entry files named `app`, `index`, or `server`
+ * (optionally under `src/`) that default-export the instantiated Express
+ * app. This default export is that entrypoint: instantiating here is
+ * side-effect-free (no port binding, no required env, no database traffic),
+ * so tests importing `{ createApp }` are unaffected.
+ */
+const vercelApp = createApp();
+
+export default vercelApp;
