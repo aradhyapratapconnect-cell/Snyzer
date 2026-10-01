@@ -1,4 +1,4 @@
-import { createApp } from './app.js';
+import { createApp } from './app.mjs';
 import { checkDatabaseConnection, closeDatabase, formatDatabaseError } from './config/database.js';
 import { getBackendEnv } from './config/env.js';
 import { logger } from './utils/logger.js';

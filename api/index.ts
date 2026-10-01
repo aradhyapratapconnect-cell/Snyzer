@@ -1,5 +1,5 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
-import { createApp } from '../backend/src/app.js';
+import { createApp } from '../backend/src/app.mjs';
 
 /**
  * Vercel Function entrypoint for the single-project deployment (SNZ-065).

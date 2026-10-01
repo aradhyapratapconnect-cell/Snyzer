@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import request from 'supertest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createApp } from '../src/app.js';
+import { createApp } from '../src/app.mjs';
 import { errorHandler } from '../src/middleware/errorHandler.js';
 import { REQUEST_ID_HEADER } from '../src/middleware/requestId.js';
 

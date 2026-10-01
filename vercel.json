@@ -9,7 +9,7 @@
     "backend": {
       "root": "backend/",
       "framework": "express",
-      "entrypoint": "src/app.ts"
+      "entrypoint": "src/app.mts"
     }
   },
   "rewrites": [

@@ -1,6 +1,6 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createApp } from '../app.js';
+import { createApp } from '../app.mjs';
 import {
   checkBundleSecrets,
   checkErrorSanitization,

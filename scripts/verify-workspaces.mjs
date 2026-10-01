@@ -113,7 +113,7 @@ if (existsSync(apiEntry)) {
   const apiSrc = readFileSync(apiEntry, 'utf8');
   check(
     'api/index.ts imports createApp from backend/src',
-    apiSrc.includes("from '../backend/src/app.js'") && apiSrc.includes('createApp'),
+    apiSrc.includes("from '../backend/src/app.mjs'") && apiSrc.includes('createApp'),
   );
 }
 

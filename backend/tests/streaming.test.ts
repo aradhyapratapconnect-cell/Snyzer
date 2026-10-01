@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createApp } from '../src/app.js';
+import { createApp } from '../src/app.mjs';
 import { _setPoolForTests } from '../src/config/database.js';
 import { OpenRouterProvider } from '../src/services/ai/OpenRouterProvider.js';
 import { extractDisplayablePrefix } from '../src/services/ai/streamingParser.js';

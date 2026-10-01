@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
-import { createApp } from '../src/app.js';
+import { createApp } from '../src/app.mjs';
 import { escapeHtml, sanitizePlainText } from '../src/security/sanitizer.js';
 
 /**

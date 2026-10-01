@@ -2,7 +2,7 @@ import type { Pool } from 'pg';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WritingJobResponseSchema } from '@snyzer/shared';
-import { createApp } from '../src/app.js';
+import { createApp } from '../src/app.mjs';
 import { _setPoolForTests } from '../src/config/database.js';
 import { MockAIProvider } from '../src/services/ai/mockProvider.js';
 import { executeWritingJob } from '../src/services/writing/writingService.js';
@@ -67,7 +67,7 @@ async function installIsolatedApp() {
   const statements: Statement[] = [];
   const { pool } = makeFakePool(statements);
   db._setPoolForTests(pool);
-  const { createApp: freshCreateApp } = await import('../src/app.js');
+  const { createApp: freshCreateApp } = await import('../src/app.mjs');
   return { app: freshCreateApp(), statements };
 }
 
